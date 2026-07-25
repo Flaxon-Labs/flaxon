@@ -1,0 +1,222 @@
+# Project information
+site_name: Flaxon
+site_description: A technology-neutral, async-first Python backend framework
+site_author: Aldane Hutchinson
+site_url: https://flaxon.dev
+
+# Repository
+repo_name: flaxon/flaxon
+repo_url: https://github.com/flaxon/flaxon
+edit_uri: blob/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2026 Aldane Hutchinson and Flaxon Contributors
+
+# Theme
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.tabs.link
+    - toc.follow
+    - toc.integrate
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/water
+    admonition:
+      note: fontawesome/solid/note-sticky
+      abstract: fontawesome/solid/list-ul
+      info: fontawesome/solid/circle-info
+      tip: fontawesome/solid/lightbulb
+      success: fontawesome/solid/check
+      question: fontawesome/solid/circle-question
+      warning: fontawesome/solid/triangle-exclamation
+      failure: fontawesome/solid/xmark
+      danger: fontawesome/solid/skull
+      bug: fontawesome/solid/bug
+      example: fontawesome/solid/list
+      quote: fontawesome/solid/quote-left
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: flaxon
+      repo: flaxon
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/abbreviations.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Plugins
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      handlers:
+        python:
+          import:
+            - https://docs.python.org/3/objects.inv
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_root_full_path: false
+            show_object_full_path: false
+            show_category_heading: true
+            show_signature_annotations: true
+            show_if_no_docstring: false
+            show_bases: true
+            show_source: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            group_by_category: true
+            annotations_path: brief
+            heading_level: 2
+            docstring_section_style: table
+            separate_signature: true
+            unwrap_annotated: true
+            merge_init_into_class: true
+            signature_crossrefs: true
+  - social
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+
+# Navigation
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Quick Start: quickstart.md
+      - Philosophy: philosophy.md
+  - User Guide:
+      - Routing: guides/routing.md
+      - Requests: guides/requests.md
+      - Responses: guides/responses.md
+      - Middleware: guides/middleware.md
+      - Validation: guides/validation.md
+      - WebSockets: guides/websockets.md
+      - Templates (Jinax): guides/jinax.md
+      - Databases: guides/databases.md
+      - Authentication: guides/authentication.md
+      - Authorization: guides/authorization.md
+      - Testing: guides/testing.md
+      - Debugging: guides/debugging.md
+      - Plugins: guides/plugins.md
+      - Mobile Backends: guides/mobile-backends.md
+  - API Reference:
+      - Application: api/application.md
+      - Routing: api/routing.md
+      - HTTP: api/http.md
+      - WebSocket: api/websocket.md
+      - Validation: api/validation.md
+      - Security: api/security.md
+      - Jinax: api/jinax.md
+      - Testing: api/testing.md
+  - Examples:
+      - Basic API: examples/basic-api.md
+      - React Backend: examples/react-backend.md
+      - Android Backend: examples/android-backend.md
+      - WebSocket Chat: examples/websocket-chat.md
+      - Jinax Website: examples/jinax-website.md
+      - Large Application: examples/large-application.md
+  - Deployment:
+      - Overview: deployment.md
+      - Docker: docker.md
+      - Kubernetes: kubernetes.md
+      - Cloud Platforms: cloud.md
+  - Performance: performance.md
+  - Security: security.md
+  - Migration Guide: migration-guide.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+  - Roadmap: roadmap.md
+
+# Extra settings
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/flaxon/flaxon
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/flaxon
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/flaxon
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/flaxon-framework/
+  consent:
+    title: Cookie consent
+    description: >-
+      We use cookies to recognize your repeated visits and preferences, as well
+      as to measure the effectiveness of our documentation and whether users
+      find what they're searching for. With your consent, you're helping us to
+      make our documentation better.
+  version:
+    provider: mike
+  analytics:
+    provider: google
+    property: UA-XXXXXXXX-X

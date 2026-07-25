@@ -1,0 +1,9 @@
+services:
+  flaxon:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      FLAXON_ENV: production
+      FLAXON_DEBUG: "false"
+      FLAXON_SECRET_KEY: change-this-in-production

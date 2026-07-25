@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h1>{{ heading }}</h1>
+<p>This page is rendered by Jinax, Flaxon's optional Jinja2 integration. A React, Android, Flutter, Java, or API-only project does not need Jinax.</p>
+<div class="grid">
+{% for product in products %}
+<article class="card">
+    <h2>{{ product.name }}</h2>
+    <p>{{ product.price | currency("USD") }}</p>
+</article>
+{% else %}
+<p>No products are available.</p>
+{% endfor %}
+</div>
+{% endblock %}

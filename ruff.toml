@@ -1,0 +1,80 @@
+line-length = 110
+target-version = "py311"
+src = ["src"]
+extend-exclude = [
+    ".venv",
+    ".tox",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".git",
+    "__pycache__",
+    "docs",
+    "examples",
+]
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "D",   # pydocstyle
+    "SIM", # flake8-simplify
+    "PL",  # pylint
+    "RUF", # ruff specific
+    "TID", # tidy imports
+    "RET", # flake8-return
+    "PTH", # flake8-use-pathlib
+    "S",   # flake8-bandit (security)
+]
+ignore = [
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D105",  # Missing docstring in magic method
+    "D107",  # Missing docstring in __init__
+    "D203",  # 1 blank line required before class docstring
+    "D212",  # Multi-line docstring summary should start at the first line
+    "D401",  # First line of docstring should be in imperative mood
+    "PLR0913", # Too many arguments
+    "PLR2004", # Magic number
+    "B008",  # Do not perform function calls in argument defaults
+    "B904",  # Raise from None
+    "SIM117", # Combine with statements
+    "S101",  # Use of assert (can be useful in tests)
+    "S104",  # Bind to all interfaces
+    "S105",  # Hardcoded password string
+    "S106",  # Hardcoded password argument
+    "S107",  # Hardcoded password default
+    "S311",  # Random module usage
+    "S605",  # Subprocess with shell
+    "S607",  # Subprocess with full path
+    "S701",  # Jinja2 autoescape false
+]
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401", "D", "I001"]
+"tests/**/*.py" = ["D", "PLR", "B", "S", "SIM", "TID"]
+"examples/**/*.py" = ["D", "PLR", "B", "S", "SIM", "TID"]
+"conftest.py" = ["F401", "D"]
+
+[lint.isort]
+known-first-party = ["flaxon"]
+force-single-line = false
+combine-as-imports = true
+split-on-trailing-comma = false
+
+[lint.pydocstyle]
+convention = "google"
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+preview = true

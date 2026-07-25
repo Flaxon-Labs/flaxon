@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Flaxon{% endblock %}</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 2rem; background: #f8fafc; color: #0f172a; }
+        header { display: flex; justify-content: space-between; align-items: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+        .card { background: white; padding: 1rem; border: 1px solid #cbd5e1; border-radius: 12px; }
+        code { background: #e2e8f0; padding: .15rem .35rem; border-radius: 5px; }
+    </style>
+</head>
+<body>
+<header><strong>Flaxon</strong><span>Jinax/Jinja2 demo</span></header>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

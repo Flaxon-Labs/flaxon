@@ -1,0 +1,50 @@
+[run]
+branch = true
+source_pkgs = ["flaxon"]
+parallel = true
+concurrency = ["thread", "multiprocessing"]
+omit = [
+    "tests/*",
+    "examples/*",
+    "**/__init__.py",
+    "**/__main__.py",
+    "setup.py",
+    "**/conftest.py",
+]
+
+[report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "from __future__ import annotations",
+    "@overload",
+]
+show_missing = true
+precision = 2
+fail_under = 80
+exclude_also = [
+    "def __repr__",
+    "if self\\.debug",
+    "if __name__ == .__main__.:",
+]
+
+[html]
+directory = "htmlcov"
+title = "Flaxon Framework Coverage Report"
+extra_css = """
+    .hidden { display: none; }
+    .annotation { background: #f0f0f0; }
+"""
+
+[xml]
+output = "coverage.xml"
+
+[json]
+output = "coverage.json"
+pretty_print = true

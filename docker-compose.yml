@@ -1,0 +1,177 @@
+# Flaxon Framework Docker Compose Configuration
+# Supports development, testing, and production environments
+
+version: "3.8"
+
+# ============================================================
+# Development Environment
+# ============================================================
+services:
+  # Main application service
+  app:
+    build:
+      context: .
+      target: development
+      dockerfile: Dockerfile
+    container_name: flaxon-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - FLAXON_ENV=development
+      - FLAXON_DEBUG=true
+      - FLAXON_SECRET_KEY=${FLAXON_SECRET_KEY:-change-me-in-development}
+      - FLAXON_ALLOWED_HOSTS=localhost,127.0.0.1,app,0.0.0.0
+      - DATABASE_URL=postgresql://flaxon:flaxon@db:5432/flaxon
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./src:/app/src
+      - ./examples:/app/examples
+      - ./tests:/app/tests
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+      - ./docs:/app/docs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - flaxon-network
+
+  # PostgreSQL database for development
+  db:
+    image: postgres:16-alpine
+    container_name: flaxon-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=flaxon
+      - POSTGRES_PASSWORD=flaxon
+      - POSTGRES_DB=flaxon
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - flaxon-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flaxon -d flaxon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - flaxon-network
+
+  # Redis for caching and WebSocket broadcasting
+  redis:
+    image: redis:7-alpine
+    container_name: flaxon-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - flaxon-redis-data:/data
+    command: redis-server --appendonly yes --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - flaxon-network
+
+  # Test runner
+  test:
+    build:
+      context: .
+      target: development
+      dockerfile: Dockerfile
+    container_name: flaxon-test
+    command: pytest -v --cov=flaxon --cov-report=term-missing
+    environment:
+      - FLAXON_ENV=testing
+      - FLAXON_DEBUG=false
+      - FLAXON_SECRET_KEY=test-secret-key-do-not-use-in-production
+      - DATABASE_URL=postgresql://flaxon:flaxon@db:5432/flaxon
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - flaxon-network
+
+# ============================================================
+# Production Environment (with extra services)
+# ============================================================
+services:
+  # Production app with multiple workers
+  app-prod:
+    build:
+      context: .
+      target: production
+      dockerfile: Dockerfile
+    container_name: flaxon-app-prod
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - FLAXON_ENV=production
+      - FLAXON_DEBUG=false
+      - FLAXON_SECRET_KEY=${FLAXON_SECRET_KEY}
+      - FLAXON_ALLOWED_HOSTS=api.example.com,example.com
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - flaxon-network
+
+  # Nginx reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    container_name: flaxon-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app-prod
+    networks:
+      - flaxon-network
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  flaxon-postgres-data:
+    driver: local
+  flaxon-redis-data:
+    driver: local
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  flaxon-network:
+    driver: bridge
+    name: flaxon-network

@@ -1,0 +1,176 @@
+# Flaxon Framework Pre-commit Configuration
+# See https://pre-commit.com for more information
+# See https://pre-commit.ci for CI integration
+
+repos:
+  # ============================================================
+  # General hooks
+  # ============================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: detect-private-key
+      - id: forbid-new-submodules
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: name-tests-test
+        args: [--pytest-test-first]
+
+  # ============================================================
+  # Python formatting with ruff
+  # ============================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # ============================================================
+  # Type checking with mypy
+  # ============================================================
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.0.0
+          - types-requests>=2.0.0
+          - types-setuptools>=70.0.0
+        args:
+          - --ignore-missing-imports
+          - --warn-unused-ignores
+          - --warn-redundant-casts
+          - --warn-unused-configs
+          - --strict-optional
+          - --warn-no-return
+          - --warn-return-any
+          - --disallow-untyped-defs
+          - --disallow-any-generics
+          - --no-implicit-optional
+          - --strict-equality
+        files: ^src/
+        pass_filenames: false
+
+  # ============================================================
+  # Import sorting (if ruff is not enough)
+  # ============================================================
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+        args: [--profile=black, --line-length=110]
+
+  # ============================================================
+  # Security linter
+  # ============================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: [-r, src/flaxon, -ll]
+        files: ^src/
+        additional_dependencies: [bandit[toml]]
+
+  # ============================================================
+  # Markdown formatting and linting
+  # ============================================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.40.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+        files: \.(md|markdown)$
+
+  # ============================================================
+  # Shell script formatting
+  # ============================================================
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        files: \.(sh|bash)$
+
+  # ============================================================
+  # TOML formatting
+  # ============================================================
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.13.0
+    hooks:
+      - id: pretty-format-toml
+        args: [--autofix, --indent, "2"]
+        files: \.toml$
+
+  # ============================================================
+  # YAML formatting
+  # ============================================================
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.13.0
+    hooks:
+      - id: pretty-format-yaml
+        args: [--autofix, --indent, "2", --line-width, "80"]
+        files: \.(yaml|yml)$
+
+  # ============================================================
+  # Check for Python dead code
+  # ============================================================
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        args:
+          - --in-place
+          - --remove-all-unused-imports
+          - --expand-star-imports
+          - --remove-duplicate-keys
+          - --remove-unused-variables
+        files: \.py$
+
+  # ============================================================
+  # Check for spelling errors
+  # ============================================================
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        args: [--ignore-words=.codespellignore]
+        exclude: ^(tests|examples)/
+
+# ============================================================
+# CI Configuration
+# ============================================================
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+  autoupdate_commit_msg: |
+    [pre-commit.ci] pre-commit autoupdate
+  autoupdate_schedule: monthly
+  skip: [mypy, bandit]
+  submodules: false
+
+# ============================================================
+# Local Configuration
+# ============================================================
+default_language_version:
+  python: python3.11
+
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+  - commit-msg
+
+minimum_pre_commit_version: "3.0.0"
