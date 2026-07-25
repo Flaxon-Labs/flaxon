@@ -4,7 +4,7 @@ import argparse
 import code
 from typing import Any
 
-from ..commands import Command
+from ..base import Command
 
 
 class ShellCommand(Command):

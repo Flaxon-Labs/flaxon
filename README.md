@@ -1,12 +1,22 @@
 # Flaxon
 
+<p align="center">
+  <img src="assets/flaxon.png" alt="Flaxon Logo" width="200"/>
+</p>
+
+
+
+
+
+# Flaxon
 **A technology-neutral, async-first Python backend framework**
-[License](https://github.com/aldanedev-create/Flaxon-Backend-Framework/blob/main/LICENSE)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/aldanedev-create/Flaxon-Backend-Framework/blob/main/LICENSE) [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 Flaxon combines Flask-like ease, structured large-application development, async-first networking, readable debugging, optional Jinja2 templates, and complete freedom over your frontend and client technologies.
 
-link: https://pypi.org/project/flaxon/0.1.1/
+
+link: https://pypi.org/project/flaxon/0.1.5/
 
 ```python
 from flaxon import Flaxon

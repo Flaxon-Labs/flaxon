@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib
+import os
+import sys
 from typing import Any
 
 
@@ -26,6 +28,11 @@ def import_string(value: str) -> Any:
         raise ValueError("Import string must use the form 'module:attribute'.")
 
     module_name, attribute = value.split(":", 1)
+
+    cwd = os.getcwd()
+    if cwd not in sys.path:
+        sys.path.insert(0, cwd)
+
     module = importlib.import_module(module_name)
     return getattr(module, attribute)
 

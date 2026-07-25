@@ -4,7 +4,7 @@ import argparse
 import subprocess
 from typing import Any
 
-from ..commands import Command
+from ..base import Command
 
 
 class TestCommand(Command):

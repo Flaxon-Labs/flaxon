@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from typing import Any
 
-from ..commands import Command
+from ..base import Command
 
 
 class RunCommand(Command):
@@ -35,6 +37,10 @@ class RunCommand(Command):
             from dotenv import load_dotenv
             load_dotenv(args.env_file)
 
+        cwd = os.getcwd()
+        if cwd not in sys.path:
+            sys.path.insert(0, cwd)
+
         console.info(f"Starting Flaxon application: {args.application}")
         console.info(f"Host: {args.host}, Port: {args.port}")
 
@@ -46,6 +52,7 @@ class RunCommand(Command):
                 reload=args.reload,
                 workers=args.workers,
                 log_level=args.log_level,
+                app_dir=cwd,
             )
             return 0
         except KeyboardInterrupt:

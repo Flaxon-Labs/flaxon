@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flaxon import __version__
 
 import argparse
 import sys
@@ -15,7 +16,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-v", "--version",
         action="version",
-        version="Flaxon 0.1.0",
+        version=f"Flaxon {__version__}",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 

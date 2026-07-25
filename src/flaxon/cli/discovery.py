@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Any
 from .base import Command
-from .commands import Command, DoctorCommand, GenerateCommand, NewCommand, RoutesCommand, RunCommand
+from .commands import DoctorCommand, GenerateCommand, NewCommand, RoutesCommand, RunCommand
 
 
 class CommandDiscovery:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
-from ..commands import Command
+from ..base import Command
 
 
 class VersionCommand(Command):

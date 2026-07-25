@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from ..commands import Command
+from ..base import Command
 from ..generator import Generator
 
 

@@ -44,6 +44,10 @@ class Request:
             self._body = b"".join(parts)
         return self._body
 
+    async def text(self, encoding: str = "utf-8") -> str:
+        """Decode the request body as text."""
+        return (await self.body()).decode(encoding)
+
     async def json(self) -> Any:
         """Decode the request body as JSON."""
         data = await self.body()

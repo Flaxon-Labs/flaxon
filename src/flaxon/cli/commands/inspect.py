@@ -4,7 +4,7 @@ import argparse
 import json
 from typing import Any
 
-from ..commands import Command
+from ..base import Command
 
 
 class InspectCommand(Command):

@@ -5,7 +5,7 @@ import subprocess
 import sys
 from typing import Any
 
-from ..commands import Command
+from ..base import Command
 
 
 class BuildCommand(Command):

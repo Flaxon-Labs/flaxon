@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from ..commands import Command
+from ..base import Command
 
 
 class ScheduleCommand(Command):
