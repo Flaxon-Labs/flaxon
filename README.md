@@ -1,10 +1,9 @@
 # Flaxon
 
  
- p align="center">
+ <p align="center">
   <img src="https://raw.githubusercontent.com/aldanedev-create/Flaxon-Backend-Framework/main/assets/flaxon.png" alt="flaxon Logo"
    width="200"/>
-   <sub>Start Coding right now!!</sub>
 </p>
 
 
