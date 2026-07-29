@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import inspect
+import logging
+import sys
+import time
+import traceback
+import uuid
 from collections.abc import Callable
 from typing import Any
-
-import time
-import uuid
 
 from flaxon.debugging import Dashboard, Debugger, ErrorStore
 from flaxon.exceptions import HTTPException
@@ -20,11 +22,13 @@ from .configuration import Config
 from .lifecycle import Lifecycle
 from .state import State
 
+logger = logging.getLogger("flaxon")
+
 
 class Flaxon:
     """An async-first ASGI application with route and middleware support."""
 
-    def __init__(self, name: str, *, debug: bool | None = None, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, name: str = "FlaxonApp", *, debug: bool | None = None, config: dict[str, Any] | None = None) -> None:
         self.name = name
         self.config = Config(config)
         if debug is not None:
@@ -131,6 +135,10 @@ class Flaxon:
         except HTTPException as exc:
             response = JSONResponse(exc.to_dict(), status_code=exc.status_code)
         except Exception as exc:
+            # Print unhandled stack trace to terminal so errors are visible in stdout/stderr
+            sys.stderr.write(f"ERROR processing request [{request.method} {request.path}]:\n")
+            traceback.print_exc(file=sys.stderr)
+
             response = await self.debugger.response_for(exc, request, scope)
             if self.debug:
                 self.error_store.store(
@@ -170,7 +178,9 @@ class Flaxon:
             await self._invoke(matched.route.endpoint, socket, matched.params)
         except HTTPException:
             await socket.close(code=4404, reason="WebSocket route not found")
-        except Exception:
+        except Exception as exc:
+            sys.stderr.write(f"ERROR processing WebSocket connection:\n")
+            traceback.print_exc(file=sys.stderr)
             await socket.close(code=1011, reason="Internal server error")
 
     async def _handle_lifespan(self, receive: Any, send: Any) -> None:
