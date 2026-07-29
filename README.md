@@ -17,7 +17,7 @@ Flaxon combines Flask-like ease, structured large-application development, async
 
 check out the docs on website below ⬇️⬇️⬇️⬇️
 
-link: https://flaxon-website.vercel.app/
+[Visit Flaxon Website](https://flaxon-website.vercel.app/)
 
 ```python
 from flaxon import Flaxon
