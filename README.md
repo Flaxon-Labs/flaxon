@@ -1,8 +1,3 @@
-# Flaxon
-
-<p align="center">
-  <img src="assets/flaxon.png" alt="Flaxon Logo" width="200"/>
-</p>
 
 
 
@@ -12,11 +7,14 @@
 
 
 <p align="center">
+  <a href="https://github.com/aldanedev-create/Flaxon-Backend-Framework">
+    <img src=".github/assets/flaxon.png" alt="Flaxon Logo" width="200">
+  </a>
+  <br><br>
   <a href="https://pypi.org/project/flaxon/"><img src="https://img.shields.io/pypi/v/flaxon.svg" alt="PyPI version"></a>
   <a href="https://github.com/aldanedev-create/Flaxon-Backend-Framework/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/badge/code%20style-ruff-000000.svg" alt="Code style: ruff"></a>
 </p>
-
 
 Flaxon combines Flask-like ease, structured large-application development, async-first networking, readable debugging, optional Jinja2 templates, and complete freedom over your frontend and client technologies.
 
