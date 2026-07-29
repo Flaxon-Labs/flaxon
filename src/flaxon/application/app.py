@@ -6,8 +6,12 @@ import inspect
 from collections.abc import Callable
 from typing import Any
 
+import time
+import uuid
+
+from flaxon.debugging import Dashboard, Debugger, ErrorStore
 from flaxon.exceptions import HTTPException
-from flaxon.http import JSONResponse, Request, Response
+from flaxon.http import HTMLResponse, JSONResponse, Request, Response
 from flaxon.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
 from flaxon.routing import Router
 from flaxon.websocket import WebSocket, WebSocketManager
@@ -31,8 +35,17 @@ class Flaxon:
         self.lifecycle = Lifecycle()
         self.jinax: Any = None
         self.websocket_manager = WebSocketManager()
+        self.error_store = ErrorStore()
+        self.debugger = Debugger(debug=self.debug)
         self._middleware: list[tuple[type[Any], dict[str, Any]]] = [(RequestIDMiddleware, {}), (SecurityHeadersMiddleware, {})]
         self._middleware_stack: Any = None
+
+        if self.debug:
+            self.router.route("/__debug__", methods=("GET",), name="flaxon_debug_dashboard")(self._debug_dashboard)
+
+    async def _debug_dashboard(self) -> HTMLResponse:
+        """Render the debug dashboard showing recent errors (debug mode only)."""
+        return Dashboard(self.error_store, debug=self.debug).render()
 
     def route(self, path: str, *, methods: set[str] | list[str] | tuple[str, ...] = ("GET",), name: str | None = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register a route with an explicit set of HTTP methods."""
@@ -118,10 +131,17 @@ class Flaxon:
         except HTTPException as exc:
             response = JSONResponse(exc.to_dict(), status_code=exc.status_code)
         except Exception as exc:
-            payload: dict[str, Any] = {"error": {"code": "FX-DEV-500" if self.debug else "FX-HTTP-500", "message": "Internal server error"}}
+            response = await self.debugger.response_for(exc, request, scope)
             if self.debug:
-                payload["error"]["debug"] = str(exc)
-            response = JSONResponse(payload, status_code=500)
+                self.error_store.store(
+                    {
+                        "error_id": str(scope.get("flaxon.request_id") or uuid.uuid4()),
+                        "type": type(exc).__name__,
+                        "message": str(exc),
+                        "path": request.path,
+                        "timestamp": time.time(),
+                    }
+                )
         if request.method == "HEAD":
             response.body = b""
             response.headers["content-length"] = "0"

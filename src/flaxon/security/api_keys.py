@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from typing import Any
-
+from collections.abc import Callable
 from flaxon.exceptions import Unauthorized
 from flaxon.http import Request
 

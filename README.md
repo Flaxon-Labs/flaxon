@@ -9,14 +9,17 @@
 
 
 # Flaxon
-**A technology-neutral, async-first Python backend framework**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/aldanedev-create/Flaxon-Backend-Framework/blob/main/LICENSE) [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
+<p align="center">
+  <a href="https://pypi.org/project/flaxon/"><img src="https://img.shields.io/pypi/v/flaxon.svg" alt="PyPI version"></a>
+  <a href="https://github.com/aldanedev-create/Flaxon-Backend-Framework/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/badge/code%20style-ruff-000000.svg" alt="Code style: ruff"></a>
+</p>
+
 
 Flaxon combines Flask-like ease, structured large-application development, async-first networking, readable debugging, optional Jinja2 templates, and complete freedom over your frontend and client technologies.
 
-
-link: https://pypi.org/project/flaxon/0.1.5/
 
 ```python
 from flaxon import Flaxon
@@ -48,7 +51,9 @@ async def get_user(user_id: int):
 
 ## Quick Start
 
-### Installation
+### 🚀 Installation
+
+Install the published package via `pip`:
 
 ```bash
 pip install flaxon
@@ -58,7 +63,12 @@ Or with just the core:
 
 ```bash
 pip install flaxon
+
 ```
+Or clone the repository locally:
+
+Bash
+git clone [https://github.com/aldanedev-create/Flaxon-Backend-Framework.git](https://github.com/aldanedev-create/Flaxon-Backend-Framework.git)
 
 ### Create an application
 
@@ -137,6 +147,134 @@ async def home(request):
         "title": "Welcome",
         "products": await product_service.list()
     })
+```
+
+
+## 💡 Quick Start Example
+
+Small example Flaxon application: a server-rendered HTML Todo list.
+
+Uses Jinax (Flaxon's Jinja2 integration) to render `templates/todos.html`, plain HTML `<form>` elements for adding/toggling/deleting todos, and redirect-after-post so refreshing the page never resubmits a form.
+
+### Run the App
+
+```bash
+flaxon run todo_html:app --reload
+# or
+uvicorn todo_html:app --reload
+
+Then open http://localhost:8000/ in your browser
+
+todo_html.py See Below: ⬇️⬇️
+```python
+
+from __future__ import annotations
+
+from urllib.parse import parse_qs
+
+from flaxon import Flaxon
+from flaxon.exceptions import NotFound
+from flaxon.http.response import RedirectResponse
+from flaxon.jinax import Jinax
+
+app = Flaxon("todo-html", debug=True)
+app.use_templates(Jinax("templates", auto_reload=True))
+
+todos: list[dict] = []
+next_id = 1
+
+
+@app.get("/")
+async def home(request):
+    return await request.render("todos.html", {"todos": todos})
+
+
+@app.post("/todos")
+async def create_todo(request):
+    global next_id
+    body = (await request.body()).decode("utf-8")
+    form = parse_qs(body, keep_blank_values=True)
+    title = form.get("title", [""])[0].strip()
+    if title:
+        todos.append({"id": next_id, "title": title, "done": False})
+        next_id += 1
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/todos/<int:todo_id>/toggle")
+async def toggle_todo(todo_id: int):
+    for todo in todos:
+        if todo["id"] == todo_id:
+            todo["done"] = not todo["done"]
+            return RedirectResponse("/", status_code=303)
+    raise NotFound(f"No todo with id {todo_id}")
+
+
+@app.post("/todos/<int:todo_id>/delete")
+async def delete_todo(todo_id: int):
+    for i, todo in enumerate(todos):
+        if todo["id"] == todo_id:
+            todos.pop(i)
+            return RedirectResponse("/", status_code=303)
+    raise NotFound(f"No todo with id {todo_id}")
+
+
+```
+
+
+
+### `templates/todos.html` : See Below ⬇️⬇️💡
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Flaxon Todos</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 3rem auto; color: #222; }
+    h1 { font-size: 1.4rem; }
+    form.add { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    form.add input[type=text] { flex: 1; padding: 0.5rem; font-size: 1rem; }
+    form.add button { padding: 0.5rem 1rem; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid #eee; }
+    li form { display: inline; margin: 0; }
+    li .title { flex: 1; }
+    li .done .title { text-decoration: line-through; color: #999; }
+    button.link { background: none; border: none; color: #666; cursor: pointer; padding: 0.2rem 0.4rem; }
+    button.link:hover { color: #000; }
+    .empty { color: #888; }
+  </style>
+</head>
+<body>
+  <h1>Flaxon Todos</h1>
+
+  <form class="add" method="post" action="/todos">
+    <input type="text" name="title" placeholder="What needs doing?" required>
+    <button type="submit">Add</button>
+  </form>
+
+  {% if todos %}
+  <ul>
+    {% for todo in todos %}
+    <li class="{{ 'done' if todo.done else '' }}">
+      <form method="post" action="/todos/{{ todo.id }}/toggle">
+        <button type="submit" class="link">{{ "☑" if todo.done else "☐" }}</button>
+      </form>
+      <span class="title">{{ todo.title }}</span>
+      <form method="post" action="/todos/{{ todo.id }}/delete">
+        <button type="submit" class="link">✕</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">No todos yet — add one above.</p>
+  {% endif %}
+</body>
+</html>
+
 ```
 
 ## Philosophy

@@ -160,6 +160,92 @@ class {name_capitalize}Middleware(Middleware):
 
         await self.app(scope, receive, send_wrapper)
 """,
+
+ "task.py": """from flaxon.tasks import Task, task
+from flaxon.tasks.retry import RetryPolicy
+
+
+# Define a simple task
+@task(name="{name}_task")
+async def {name}_task(data: dict) -> dict:
+    \"\"\"
+    Task to process {name} data.
+
+    Args:
+        data: The data to process
+
+    Returns:
+        Processed result
+    \"\"\"
+    # Your task logic here
+    result = {"processed": True, "data": data}
+    return result
+
+
+# Define a task with retry policy
+@task(
+    name="{name}_retry_task",
+    retry_policy=RetryPolicy(
+        max_retries=3,
+        delay=1.0,
+        backoff=2.0,
+        max_delay=30.0,
+    ),
+    timeout=30,
+)
+async def {name}_retry_task(data: dict) -> dict:
+    \"\"\"
+    Task with retry policy.
+
+    Args:
+        data: The data to process
+
+    Returns:
+        Processed result
+    \"\"\"
+    # Your task logic here
+    return {"processed": True, "data": data}
+
+
+# Define a synchronous task
+@task(name="{name}_sync_task")
+def {name}_sync_task(value: int) -> int:
+    \"\"\"
+    Synchronous task.
+
+    Args:
+        value: The value to process
+
+    Returns:
+        The processed value
+    \"\"\"
+    return value * 2
+
+
+# Example: How to use tasks in your application
+async def run_{name}_tasks():
+    from flaxon.tasks import TaskQueue, TaskRegistry
+
+    # Register tasks
+    registry = TaskRegistry()
+    registry.register("{name}_task", {name}_task)
+    registry.register("{name}_retry_task", {name}_retry_task)
+    registry.register("{name}_sync_task", {name}_sync_task)
+
+    # Create queue and push tasks
+    queue = TaskQueue()
+
+    # Push a task
+    task = Task("{name}_task", {name}_task, args=[{"key": "value"}])
+    await queue.push(task)
+
+    # Get result
+    result = await queue.get_result(task.id)
+    return result
+""",
+
+
+
 }
 
 
