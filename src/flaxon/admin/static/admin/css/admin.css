@@ -1,0 +1,250 @@
+/* static/admin/css/admin.css */
+
+/* ============================================================
+   ADMIN STYLES - Flaxon Admin
+   ============================================================ */
+
+/* ----- Base ----- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    overflow-x: hidden;
+}
+
+/* ----- Scrollbar ----- */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #60a5fa;
+}
+
+/* ----- 3D Container ----- */
+#three-container {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+}
+
+/* ----- Mobile Bottom Nav ----- */
+@media (max-width: 767px) {
+    .bottom-nav {
+        display: flex;
+    }
+}
+
+/* ----- Dark Mode Overrides ----- */
+.dark {
+    color-scheme: dark;
+}
+
+/* ----- Responsive Tables ----- */
+@media (max-width: 640px) {
+    table {
+        font-size: 0.8rem;
+    }
+
+    table th,
+    table td {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .table-actions {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+}
+
+/* ----- Form Elements ----- */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+}
+
+/* ----- Card Hover Effects ----- */
+.hover-card {
+    transition: all 0.3s ease;
+}
+
+.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* ----- Badge Styles ----- */
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.badge-active {
+    background: rgba(52, 211, 153, 0.2);
+    color: #34d399;
+}
+
+.badge-draft {
+    background: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+}
+
+.badge-archived {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+}
+
+.badge-danger {
+    background: rgba(248, 113, 113, 0.2);
+    color: #f87171;
+}
+
+/* ----- Responsive Grid Fixes ----- */
+@media (max-width: 640px) {
+    .grid-cols-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-cols-3 {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-cols-4 {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .gap-4 {
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .grid-cols-4 {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .p-6 {
+        padding: 1rem;
+    }
+
+    .px-6 {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .text-2xl {
+        font-size: 1.25rem;
+    }
+
+    .text-3xl {
+        font-size: 1.5rem;
+    }
+}
+
+/* ----- Print Styles ----- */
+@media print {
+    #three-container {
+        display: none !important;
+    }
+
+    .bg-slate-800\/50 {
+        background: #1e293b !important;
+        backdrop-filter: none !important;
+    }
+
+    .border-slate-700\/50 {
+        border-color: #334155 !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+}
+
+/* ----- Loading Animation ----- */
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.95);
+        opacity: 0.7;
+    }
+}
+
+.loading-pulse {
+    animation: pulse-ring 1.5s ease-in-out infinite;
+}
+
+/* ----- Toast Notifications ----- */
+.toast {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 12px 20px;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    max-width: 90%;
+    transform: translateX(120%);
+    transition: transform 0.4s ease;
+}
+
+@media (min-width: 640px) {
+    .toast {
+        max-width: 400px;
+        bottom: 30px;
+        right: 30px;
+    }
+}
+
+.toast.show {
+    transform: translateX(0);
+}
+
+.toast-success {
+    border-left: 4px solid #34d399;
+}
+
+.toast-error {
+    border-left: 4px solid #f87171;
+}
+
+.toast-warning {
+    border-left: 4px solid #fbbf24;
+}
+
+.toast-info {
+    border-left: 4px solid #60a5fa;
+}

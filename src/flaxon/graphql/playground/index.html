@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>GraphQL Playground</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .playground-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+        h1 {
+            color: #e2e8f0;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+        .playground-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        .playground-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 2rem 3rem;
+            text-align: center;
+            text-decoration: none;
+            color: #e2e8f0;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+        .playground-card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        .playground-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .playground-card h3 {
+            margin: 0 0 0.25rem 0;
+            font-weight: 600;
+        }
+        .playground-card p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            background: #3b82f6;
+            color: white;
+            margin-top: 0.5rem;
+        }
+        @media (max-width: 640px) {
+            .playground-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            .playground-card {
+                padding: 1.5rem 2rem;
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="playground-container">
+        <h1>🚀 GraphQL Playgrounds</h1>
+        <div class="playground-grid">
+            <a href="/graphql/graphiql" class="playground-card">
+                <div class="icon">📊</div>
+                <h3>GraphiQL</h3>
+                <p>Interactive GraphQL IDE</p>
+                <span class="badge">Recommended</span>
+            </a>
+            <a href="/graphql/altair" class="playground-card">
+                <div class="icon">🔮</div>
+                <h3>Altair</h3>
+                <p>Feature-rich GraphQL client</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
