@@ -4,6 +4,17 @@ import json
 from typing import Any
 
 
+async def graphql(
+    schema: Any,
+    query: str,
+    variables: dict[str, Any] | None = None,
+    context: Any = None,
+    operation_name: str | None = None,
+) -> dict[str, Any]:
+    """Execute a GraphQL query against a schema. Shorthand for schema.execute(...)."""
+    return await schema.execute(query, variables=variables, context=context, operation_name=operation_name)
+
+
 def graphql_to_dict(obj: Any) -> dict[str, Any]:
     if obj is None:
         return {}

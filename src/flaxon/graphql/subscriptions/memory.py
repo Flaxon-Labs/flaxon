@@ -1,75 +1,57 @@
 from __future__ import annotations
 
-import json
+import asyncio
+import uuid
 from typing import Any
 
 
-class RedisSubscriptionBackend:
-    def __init__(self, redis_url: str = "redis://localhost:6379/0", prefix: str = "graphql:subscription") -> None:
-        self.redis_url = redis_url
-        self.prefix = prefix
-        self._client = None
-        self._pub = None
-        self._sub = None
+class MemorySubscriptionBackend:
+    """In-process subscription backend, matching RedisSubscriptionBackend's interface.
+
+    Suitable for single-process deployments or local development. For multi-process
+    or multi-server deployments, use RedisSubscriptionBackend instead so publishes
+    from one process reach subscribers connected to another.
+    """
+
+    def __init__(self) -> None:
+        self._queues: dict[str, asyncio.Queue] = {}
+        self._sub_map: dict[str, str] = {}
+        self._operation_subs: dict[str, set[str]] = {}
 
     async def connect(self) -> None:
-        try:
-            import redis.asyncio as redis
-            self._client = redis.from_url(self.redis_url, decode_responses=True)
-            self._pub = redis.from_url(self.redis_url, decode_responses=True)
-            self._sub = redis.from_url(self.redis_url, decode_responses=True)
-        except ImportError as exc:
-            raise RuntimeError("redis is required. Install with: pip install redis") from exc
+        """No-op: nothing to connect to for the in-memory backend."""
 
     async def disconnect(self) -> None:
-        if self._client:
-            await self._client.close()
-            self._client = None
-        if self._pub:
-            await self._pub.close()
-            self._pub = None
-        if self._sub:
-            await self._sub.close()
-            self._sub = None
-
-    def _key(self, operation_id: str) -> str:
-        return f"{self.prefix}:{operation_id}"
+        """Release any pending queues."""
+        self._queues.clear()
+        self._sub_map.clear()
+        self._operation_subs.clear()
 
     async def subscribe(self, operation_id: str, context: Any, variables: dict[str, Any]) -> str:
-        import uuid
         subscription_id = str(uuid.uuid4())
-
-        data = {
-            "subscription_id": subscription_id,
-            "operation_id": operation_id,
-            "variables": variables,
-        }
-
-        await self._client.hset(
-            self._key(operation_id),
-            subscription_id,
-            json.dumps(data),
-        )
-
+        self._sub_map[subscription_id] = operation_id
+        self._operation_subs.setdefault(operation_id, set()).add(subscription_id)
+        self._queues[subscription_id] = asyncio.Queue()
         return subscription_id
 
     async def unsubscribe(self, subscription_id: str) -> None:
-        await self._client.hdel(self._key(""), subscription_id)
+        operation_id = self._sub_map.pop(subscription_id, "")
+        if operation_id in self._operation_subs:
+            self._operation_subs[operation_id].discard(subscription_id)
+            if not self._operation_subs[operation_id]:
+                del self._operation_subs[operation_id]
+        queue = self._queues.pop(subscription_id, None)
+        if queue is not None:
+            await queue.put(None)
 
     async def publish(self, operation_id: str, data: Any) -> None:
-        await self._pub.publish(
-            self._key(operation_id),
-            json.dumps(data),
-        )
+        for subscription_id in self._operation_subs.get(operation_id, set()):
+            queue = self._queues.get(subscription_id)
+            if queue is not None:
+                await queue.put(data)
 
     async def next(self, subscription_id: str) -> Any:
-        pubsub = self._sub.pubsub()
-        await pubsub.subscribe(self._key(""))
-
-        async for message in pubsub.listen():
-            if message["type"] == "message":
-                return json.loads(message["data"])
-            if message["type"] == "unsubscribe":
-                break
-
-        return None
+        queue = self._queues.get(subscription_id)
+        if queue is None:
+            return None
+        return await queue.get()

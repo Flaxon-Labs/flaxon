@@ -16,7 +16,6 @@ from flaxon.debugging import Dashboard, Debugger, ErrorStore
 from flaxon.dependency_injection import Container
 from flaxon.exceptions import HTTPException
 from flaxon.graphql import GraphQLSchema
-from flaxon.graphql.middleware import GraphQLMiddleware
 from flaxon.graphql.playground import AltairPlayground, GraphiQLPlayground
 from flaxon.health import HealthRegistry, LivenessProbe, ReadinessProbe, StartupProbe
 from flaxon.http import HTMLResponse, JSONResponse, Request, Response
@@ -87,7 +86,6 @@ class Flaxon:
         # Admin & GraphQL Properties Initialization
         self._admin: AdminDashboard | None = None
         self._graphql_schema: GraphQLSchema | None = None
-        self._graphql_middleware: GraphQLMiddleware | None = None
 
     # ============================================================
     # SYSTEM & DIAGNOSTIC ENDPOINTS
@@ -195,7 +193,6 @@ class Flaxon:
     ) -> GraphQLSchema:
         """Enable GraphQL support."""
         self._graphql_schema = schema or GraphQLSchema()
-        self._graphql_middleware = GraphQLMiddleware(self)
 
         @self.router.post(url)
         async def graphql_endpoint(request: Request) -> Response:
@@ -203,8 +200,6 @@ class Flaxon:
 
         if enable_playground:
             self._register_graphql_playground(url)
-
-        self.add_middleware(GraphQLMiddleware)
 
         return self._graphql_schema
 

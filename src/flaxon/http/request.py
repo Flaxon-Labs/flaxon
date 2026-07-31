@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from urllib.parse import parse_qs
 
 from .cookies import Cookies
 from .headers import Headers
@@ -29,6 +30,13 @@ class Request:
                 key, value = item.strip().split("=", 1)
                 cookie_data[key] = value
         self.cookies = Cookies(cookie_data)
+
+        raw_query = scope.get("query_string", b"")
+        if isinstance(raw_query, bytes):
+            raw_query = raw_query.decode("utf-8")
+        parsed_query = parse_qs(raw_query, keep_blank_values=True)
+        self.query: dict[str, str] = {key: values[0] for key, values in parsed_query.items()}
+        self.query_params = self.query
 
     async def body(self) -> bytes:
         """Read and cache the complete request body."""

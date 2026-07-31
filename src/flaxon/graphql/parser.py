@@ -25,6 +25,11 @@ from .exceptions import GraphQLSyntaxError
 from .lexer import Lexer, TokenType
 
 
+def parse(source: str) -> Document:
+    """Helper function to parse a GraphQL source string into a Document AST."""
+    return Parser(source).parse()
+
+
 class Parser:
     def __init__(self, source: str) -> None:
         self.lexer = Lexer(source)
@@ -49,10 +54,20 @@ class Parser:
             if self.current_token.value == "fragment":
                 return self.parse_fragment_definition()
 
-        return self.parse_operation_definition("query")
+        # Handle shorthand query syntax (e.g. `{ hello }`), or fallback
+        if self.current_token.type == TokenType.LEFT_BRACE:
+            return self.parse_operation_definition("query")
+
+        raise GraphQLSyntaxError(
+            f"Unexpected token: {self.current_token.value}",
+            self.current_token.line,
+            self.current_token.column,
+        )
 
     def parse_operation_definition(self, operation_type: str) -> OperationDefinition:
-        self.expect_token(TokenType.NAME, operation_type)
+        # Only expect/consume the keyword if we are currently at a NAME token
+        if self.current_token.type == TokenType.NAME and self.current_token.value == operation_type:
+            self.expect_token(TokenType.NAME, operation_type)
 
         name = None
         if self.current_token.type == TokenType.NAME:

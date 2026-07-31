@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 from .ast import (
-    DocumentNode,
-    OperationDefinitionNode,
-    FieldNode,
-    FragmentSpreadNode,
-    InlineFragmentNode,
-    FragmentDefinitionNode,
-    VariableNode,
-    VariableDefinitionNode,
+    Document,
+    OperationDefinition,
+    Field,
+    FragmentSpread,
+    InlineFragment,
+    FragmentDefinition,
+    Variable,
+    VariableDefinition,
 )
 from .exceptions import GraphQLValidationError
 from .types import ObjectType, InterfaceType, UnionType, InputObjectType, NonNull, List, Scalar
@@ -46,7 +46,7 @@ def validate_query(schema: Any, document: Any) -> list[GraphQLValidationError]:
 
 def validate_has_operations(schema: Any, document: Any) -> list[GraphQLValidationError]:
     has_ops = any(
-        isinstance(definition, OperationDefinitionNode) or getattr(definition, "kind", "") == "OperationDefinition"
+        isinstance(definition, OperationDefinition) or getattr(definition, "kind", "") == "OperationDefinition"
         for definition in document.definitions
     )
 
@@ -60,7 +60,7 @@ def validate_operation_names_unique(schema: Any, document: Any) -> list[GraphQLV
     errors: list[GraphQLValidationError] = []
 
     for definition in document.definitions:
-        if (isinstance(definition, OperationDefinitionNode) or getattr(definition, "kind", "") == "OperationDefinition") and definition.name:
+        if (isinstance(definition, OperationDefinition) or getattr(definition, "kind", "") == "OperationDefinition") and definition.name:
             op_name = definition.name.value if hasattr(definition.name, "value") else str(definition.name)
             if op_name in names:
                 errors.append(GraphQLValidationError(f"Operation name '{op_name}' is not unique."))
@@ -79,7 +79,7 @@ def validate_fields_on_objects(schema: Any, document: Any) -> list[GraphQLValida
         for selection in selection_set.selections:
             kind = getattr(selection, "kind", type(selection).__name__)
             
-            if kind == "FieldNode" or isinstance(selection, FieldNode) or hasattr(selection, "name"):
+            if kind == "Field" or isinstance(selection, Field) or hasattr(selection, "name"):
                 field_name = selection.name.value if hasattr(selection.name, "value") else str(selection.name)
                 
                 # Introspection fields support
@@ -99,7 +99,7 @@ def validate_fields_on_objects(schema: Any, document: Any) -> list[GraphQLValida
                             check_selection_set(selection.selection_set, unwrapped)
 
     for definition in document.definitions:
-        if isinstance(definition, OperationDefinitionNode) or getattr(definition, "kind", "") == "OperationDefinition":
+        if isinstance(definition, OperationDefinition) or getattr(definition, "kind", "") == "OperationDefinition":
             op_type = getattr(definition, "operation", "query").lower()
             root_type = getattr(schema, op_type, None)
             if root_type and getattr(definition, "selection_set", None):
@@ -113,8 +113,28 @@ def validate_fragment_targets(schema: Any, document: Any) -> list[GraphQLValidat
     fragment_names = {
         (def_.name.value if hasattr(def_.name, "value") else str(def_.name))
         for def_ in document.definitions
-        if getattr(def_, "kind", "") == "FragmentDefinition" or isinstance(def_, FragmentDefinitionNode)
+        if getattr(def_, "kind", "") == "FragmentDefinition" or isinstance(def_, FragmentDefinition)
     }
+
+    def check_selection_set(selection_set: Any) -> None:
+        if not selection_set or not hasattr(selection_set, "selections"):
+            return
+        for selection in selection_set.selections:
+            kind = getattr(selection, "kind", type(selection).__name__)
+            if kind == "FragmentSpread" or isinstance(selection, FragmentSpread):
+                spread_name = selection.name.value if hasattr(selection.name, "value") else str(selection.name)
+                if spread_name not in fragment_names:
+                    errors.append(GraphQLValidationError(f"Unknown fragment '{spread_name}'."))
+            nested = getattr(selection, "selection_set", None)
+            if nested:
+                check_selection_set(nested)
+
+    for definition in document.definitions:
+        selection_set = getattr(definition, "selection_set", None)
+        if selection_set:
+            check_selection_set(selection_set)
+
+    return errors
 
 
 def validate_fragment_types(schema: Any, document: Any) -> list[GraphQLValidationError]:
@@ -122,7 +142,7 @@ def validate_fragment_types(schema: Any, document: Any) -> list[GraphQLValidatio
     all_types = schema.get_types()
 
     for definition in document.definitions:
-        if getattr(definition, "kind", "") == "FragmentDefinition" or isinstance(definition, FragmentDefinitionNode):
+        if getattr(definition, "kind", "") == "FragmentDefinition" or isinstance(definition, FragmentDefinition):
             type_condition = definition.type_condition.name.value if hasattr(definition.type_condition, "name") else str(definition.type_condition)
             if type_condition not in all_types:
                 errors.append(GraphQLValidationError(f"Unknown type condition '{type_condition}' on fragment."))
