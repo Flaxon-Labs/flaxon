@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from typing import Any
 
 class AdminConfig:
     def __init__(
@@ -28,7 +28,7 @@ class AdminConfig:
         self.custom_styles = custom_styles
         self.custom_scripts = custom_scripts
 
-    def to_dict(self) -> dict[str, any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "site_title": self.site_title,
             "site_header": self.site_header,
@@ -39,4 +39,6 @@ class AdminConfig:
             "enable_filters": self.enable_filters,
             "enable_pagination": self.enable_pagination,
             "logo_url": self.logo_url,
+            "custom_styles": self.custom_styles,
+            "custom_scripts": self.custom_scripts,
         }

@@ -4,6 +4,7 @@
 {% block title %}List {{ verbose_name_plural }}{% endblock %}
 
 {% block content %}
+{% set prefix = dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') %}
 <div class="space-y-4 sm:space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -12,7 +13,7 @@
             <p class="text-slate-400 text-sm mt-1">Manage your {{ verbose_name_plural|lower }}</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ dashboard.url_prefix }}/{{ model.get_name() }}/add" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 rounded-lg text-sm font-medium transition text-white flex items-center gap-2">
+            <a href="{{ prefix }}/{{ model.get_name() }}/add" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 rounded-lg text-sm font-medium transition text-white flex items-center gap-2">
                 <i class="fas fa-plus"></i>
                 Add {{ verbose_name|lower }}
             </a>
@@ -24,11 +25,6 @@
         <div class="flex flex-col sm:flex-row gap-3">
             <div class="flex-1">
                 <input type="text" placeholder="Search..." class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
-            </div>
-            <div class="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-                <button class="px-3 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm text-white transition whitespace-nowrap">All</button>
-                <button class="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg text-sm text-blue-400 transition whitespace-nowrap">Active</button>
-                <button class="px-3 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm text-white transition whitespace-nowrap">Inactive</button>
             </div>
         </div>
     </div>
@@ -48,54 +44,39 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% for item in objects or [] %}
+                    {% set item_id = item.id if item.id is defined else (item['id'] if item['id'] is defined else loop.index) %}
                     <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
-                        <td class="px-4 py-3 text-sm text-white">1</td>
-                        <td class="px-4 py-3 text-sm text-white">Example Item</td>
-                        <td class="px-4 py-3 text-sm text-white"><span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs">Active</span></td>
+                        {% for field in list_display %}
+                        <td class="px-4 py-3 text-sm text-white">
+                            {{ item[field] if field in item else (item.__dict__[field] if field in item.__dict__ else '') }}
+                        </td>
+                        {% endfor %}
                         <td class="px-4 py-3 text-sm text-right">
                             <div class="flex items-center justify-end gap-2">
-                                <a href="{{ dashboard.url_prefix }}/{{ model.get_name() }}/1" class="p-1.5 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
+                                <a href="{{ prefix }}/{{ model.get_name() }}/{{ item_id }}" class="p-1.5 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
                                     <i class="fas fa-eye text-xs"></i>
                                 </a>
-                                <a href="{{ dashboard.url_prefix }}/{{ model.get_name() }}/1/edit" class="p-1.5 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
+                                <a href="{{ prefix }}/{{ model.get_name() }}/{{ item_id }}/edit" class="p-1.5 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
                                     <i class="fas fa-edit text-xs"></i>
                                 </a>
-                                <button class="p-1.5 rounded-lg hover:bg-red-500/20 transition text-red-400">
-                                    <i class="fas fa-trash text-xs"></i>
-                                </button>
+                                <form action="{{ prefix }}/{{ model.get_name() }}/{{ item_id }}/delete" method="POST" class="inline">
+                                    <button type="submit" data-delete data-message="Delete this {{ verbose_name|lower }}?" class="p-1.5 rounded-lg hover:bg-red-500/20 transition text-red-400">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
-                    <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
-                        <td class="px-4 py-3 text-sm text-white">2</td>
-                        <td class="px-4 py-3 text-sm text-white">Another Item</td>
-                        <td class="px-4 py-3 text-sm text-white"><span class="px-2 py-1 bg-slate-500/20 text-slate-400 rounded-full text-xs">Draft</span></td>
-                        <td class="px-4 py-3 text-sm text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                <a href="{{ dashboard.url_prefix }}/{{ model.get_name() }}/2" class="p-1.5 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
-                                    <i class="fas fa-eye text-xs"></i>
-                                </a>
-                                <a href="{{ dashboard.url_prefix }}/{{ model.get_name() }}/2/edit" class="p-1.5 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
-                                    <i class="fas fa-edit text-xs"></i>
-                                </a>
-                                <button class="p-1.5 rounded-lg hover:bg-red-500/20 transition text-red-400">
-                                    <i class="fas fa-trash text-xs"></i>
-                                </button>
-                            </div>
+                    {% else %}
+                    <tr>
+                        <td colspan="{{ (list_display|length) + 1 }}" class="px-4 py-8 text-center text-slate-400 text-sm">
+                            No records found.
                         </td>
                     </tr>
+                    {% endfor %}
                 </tbody>
             </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="px-4 py-3 border-t border-slate-700/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p class="text-sm text-slate-400">Showing 1-2 of 2 results</p>
-            <div class="flex gap-1">
-                <button class="px-3 py-1 rounded-lg bg-slate-700/50 text-white text-sm transition hover:bg-slate-600/50">Previous</button>
-                <button class="px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 text-sm transition">1</button>
-                <button class="px-3 py-1 rounded-lg hover:bg-slate-700/50 text-slate-400 text-sm transition">Next</button>
-            </div>
         </div>
     </div>
 </div>

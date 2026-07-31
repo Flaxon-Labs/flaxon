@@ -4,6 +4,7 @@
 {% block title %}Add {{ verbose_name }}{% endblock %}
 
 {% block content %}
+{% set prefix = dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') %}
 <div class="space-y-4 sm:space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -11,7 +12,7 @@
             <h1 class="text-2xl font-bold text-white">Add {{ verbose_name }}</h1>
             <p class="text-slate-400 text-sm mt-1">Create a new {{ verbose_name|lower }}</p>
         </div>
-        <a href="{{ dashboard.url_prefix }}/{{ model.get_name() }}" class="px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm transition text-white flex items-center gap-2">
+        <a href="{{ prefix }}/{{ model.get_name() }}" class="px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm transition text-white flex items-center gap-2">
             <i class="fas fa-arrow-left"></i>
             Back to list
         </a>
@@ -27,15 +28,9 @@
                     {% if field in ['name'] %}<span class="text-red-400">*</span>{% endif %}
                 </label>
                 {% if field in ['description'] %}
-                <textarea rows="4" class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition resize-y" placeholder="Enter description..."></textarea>
-                {% elif field in ['status'] %}
-                <select class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
-                    <option value="active">Active</option>
-                    <option value="draft" selected>Draft</option>
-                    <option value="archived">Archived</option>
-                </select>
+                <textarea name="{{ field }}" rows="4" class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition resize-y" placeholder="Enter description..."></textarea>
                 {% else %}
-                <input type="text" placeholder="Enter {{ field|replace('_', ' ') }}..." class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
+                <input type="text" name="{{ field }}" placeholder="Enter {{ field|replace('_', ' ') }}..." class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
                 {% endif %}
             </div>
             {% endfor %}
@@ -46,7 +41,7 @@
             <button type="submit" class="px-6 py-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 rounded-lg text-sm font-medium transition text-white">
                 <i class="fas fa-plus mr-2"></i> Create {{ verbose_name }}
             </button>
-            <a href="{{ dashboard.url_prefix }}/{{ model.get_name() }}" class="px-6 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm transition text-white text-center">
+            <a href="{{ prefix }}/{{ model.get_name() }}" class="px-6 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm transition text-white text-center">
                 Cancel
             </a>
         </div>

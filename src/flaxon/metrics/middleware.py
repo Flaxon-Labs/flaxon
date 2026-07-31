@@ -33,8 +33,10 @@ class MetricsMiddleware:
         status_code = 500
 
         labels = self._get_labels(request)
+        active_labels = {"path": request.path} if self.include_path else {}
 
         self.collector.counter("http_requests_total", "Total HTTP requests").inc(**labels)
+        self.collector.gauge("http_requests_active", "Active HTTP requests").inc(**active_labels)
 
         async def send_wrapper(message: dict[str, Any]) -> None:
             nonlocal status_code
@@ -58,7 +60,7 @@ class MetricsMiddleware:
             elif status_code >= 400:
                 self.collector.counter("http_client_errors_total", "HTTP client errors").inc(**labels)
 
-            self.collector.gauge("http_requests_active", "Active HTTP requests").dec(path=request.path)
+            self.collector.gauge("http_requests_active", "Active HTTP requests").dec(**active_labels)
 
     def _get_labels(self, request: Request) -> dict[str, str]:
         labels = {}

@@ -32,7 +32,12 @@ class WebSocket:
         self.state = WebSocketState.CONNECTING
 
     async def accept(self) -> None:
-        """Accept the peer connection."""
+        """Consume the initial handshake message and accept the peer connection."""
+        message = await self._receive()
+        if message.get("type") != "websocket.connect":
+            raise RuntimeError(
+                f"Expected 'websocket.connect' as the first message, got {message.get('type')!r}"
+            )
         await self._send({"type": "websocket.accept"})
         self.state = WebSocketState.CONNECTED
         if self.manager is not None:

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>{% block title %}{{ title }}{% endblock %} - Flaxon Admin</title>
+    <title>{% block title %}{{ dashboard.config.site_title if dashboard else (config.site_title if config else title) }}{% endblock %} - Admin</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -42,7 +42,9 @@
                         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">
                             F
                         </div>
-                        <span class="text-lg font-bold text-white hidden sm:block">{{ config.site_title }}</span>
+                        <span class="text-lg font-bold text-white hidden sm:block">
+                            {{ dashboard.config.site_title if dashboard else (config.site_title if config else "Flaxon Admin") }}
+                        </span>
                     </div>
 
                     <!-- Search -->
@@ -71,26 +73,19 @@
         </nav>
 
         <!-- Mobile Bottom Nav -->
+        {% set base_prefix = dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') %}
         <div class="fixed bottom-0 left-0 right-0 bg-slate-800/90 backdrop-blur-sm border-t border-slate-700/50 z-40 md:hidden flex justify-around items-center h-16 px-2">
-            <button onclick="window.location.href='{{ url_prefix }}/'" class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50">
+            <a href="{{ base_prefix }}/" class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50">
                 <i class="fas fa-th-large text-lg"></i>
                 <span class="text-[10px] mt-0.5">Dashboard</span>
-            </button>
+            </a>
             <button class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50">
                 <i class="fas fa-search text-lg"></i>
                 <span class="text-[10px] mt-0.5">Search</span>
             </button>
-            <button class="flex flex-col items-center text-blue-400 hover:text-white transition py-1 px-3 rounded-lg bg-blue-500/10">
-                <i class="fas fa-plus-circle text-xl"></i>
-                <span class="text-[10px] mt-0.5">Add</span>
-            </button>
             <button class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50">
                 <i class="fas fa-bell text-lg"></i>
                 <span class="text-[10px] mt-0.5">Alerts</span>
-            </button>
-            <button class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50">
-                <i class="fas fa-user text-lg"></i>
-                <span class="text-[10px] mt-0.5">Profile</span>
             </button>
         </div>
 
@@ -101,14 +96,15 @@
                 <div class="p-4">
                     <p class="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">Navigation</p>
                     <div class="space-y-1">
-                        <a href="{{ url_prefix }}/" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition">
+                        <a href="{{ base_prefix }}/" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition">
                             <i class="fas fa-th-large w-5"></i>
                             <span>Dashboard</span>
                         </a>
-                        {% for model in models %}
-                        <a href="{{ url_prefix }}/{{ model.get_name() }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition">
+                        {% set active_models = models if models else (dashboard.registry.get_all() if dashboard else []) %}
+                        {% for model_item in active_models %}
+                        <a href="{{ base_prefix }}/{{ model_item.get_name() }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition">
                             <i class="fas fa-table w-5"></i>
-                            <span>{{ model.get_verbose_name_plural() }}</span>
+                            <span>{{ model_item.get_verbose_name_plural() }}</span>
                         </a>
                         {% endfor %}
                     </div>
@@ -131,7 +127,6 @@
             return {
                 darkMode: localStorage.getItem('admin-dark-mode') === 'true' || true,
                 init() {
-                    // Initialize 3D background
                     initThreeJS();
                     if (this.darkMode) {
                         document.documentElement.classList.add('dark');
@@ -162,86 +157,36 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
-            // Particles
             const geometry = new THREE.BufferGeometry();
-            const count = 2000;
+            const count = 1500;
             const positions = new Float32Array(count * 3);
-            const sizes = new Float32Array(count);
 
             for (let i = 0; i < count * 3; i++) {
                 positions[i] = (Math.random() - 0.5) * 200;
-                if (i % 3 === 1) sizes[i/3] = Math.random() * 2 + 0.5;
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
             const material = new THREE.PointsMaterial({
                 color: 0x3b82f6,
                 size: 0.15,
                 transparent: true,
-                opacity: 0.6,
-                blending: THREE.AdditiveBlending,
+                opacity: 0.5,
             });
 
             const particles = new THREE.Points(geometry, material);
             scene.add(particles);
 
-            // Floating shapes
-            const shapes = [];
-            const colors = [0x3b82f6, 0x06b6d4, 0x8b5cf6, 0xec4899];
-
-            for (let i = 0; i < 8; i++) {
-                const size = Math.random() * 0.5 + 0.2;
-                const geo = new THREE.IcosahedronGeometry(size, 0);
-                const mat = new THREE.MeshBasicMaterial({
-                    color: colors[i % colors.length],
-                    wireframe: true,
-                    transparent: true,
-                    opacity: 0.2 + Math.random() * 0.3,
-                });
-                const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set(
-                    (Math.random() - 0.5) * 60,
-                    (Math.random() - 0.5) * 40,
-                    (Math.random() - 0.5) * 30 - 20
-                );
-                mesh.userData = {
-                    rotX: (Math.random() - 0.5) * 0.01,
-                    rotY: (Math.random() - 0.5) * 0.01,
-                    rotZ: (Math.random() - 0.5) * 0.01,
-                    floatSpeed: 0.002 + Math.random() * 0.003,
-                    floatAmp: 0.3 + Math.random() * 0.5,
-                    origY: mesh.position.y,
-                };
-                scene.add(mesh);
-                shapes.push(mesh);
-            }
-
             camera.position.z = 30;
-
-            let time = 0;
 
             function animate() {
                 requestAnimationFrame(animate);
-                time += 0.01;
-
-                particles.rotation.x = Math.sin(time * 0.02) * 0.02;
-                particles.rotation.y = time * 0.01;
-
-                shapes.forEach((mesh) => {
-                    mesh.rotation.x += mesh.userData.rotX;
-                    mesh.rotation.y += mesh.userData.rotY;
-                    mesh.rotation.z += mesh.userData.rotZ;
-                    mesh.position.y = mesh.userData.origY + Math.sin(time * mesh.userData.floatSpeed) * mesh.userData.floatAmp;
-                });
-
+                particles.rotation.y += 0.0005;
                 renderer.render(scene, camera);
             }
 
             animate();
 
-            // Resize
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();

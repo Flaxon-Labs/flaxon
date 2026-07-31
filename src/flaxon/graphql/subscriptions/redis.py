@@ -11,6 +11,7 @@ class RedisSubscriptionBackend:
         self._client = None
         self._pub = None
         self._sub = None
+        self._sub_map: dict[str, str] = {}
 
     async def connect(self) -> None:
         try:
@@ -19,7 +20,7 @@ class RedisSubscriptionBackend:
             self._pub = redis.from_url(self.redis_url, decode_responses=True)
             self._sub = redis.from_url(self.redis_url, decode_responses=True)
         except ImportError as exc:
-            raise RuntimeError("redis is required. Install with: pip install redis") from exc
+            raise RuntimeError("redis package is required for RedisSubscriptionBackend. Install with: pip install redis") from exc
 
     async def disconnect(self) -> None:
         if self._client:
@@ -38,6 +39,7 @@ class RedisSubscriptionBackend:
     async def subscribe(self, operation_id: str, context: Any, variables: dict[str, Any]) -> str:
         import uuid
         subscription_id = str(uuid.uuid4())
+        self._sub_map[subscription_id] = operation_id
 
         data = {
             "subscription_id": subscription_id,
@@ -45,31 +47,42 @@ class RedisSubscriptionBackend:
             "variables": variables,
         }
 
-        await self._client.hset(
-            self._key(operation_id),
-            subscription_id,
-            json.dumps(data),
-        )
+        if self._client:
+            await self._client.hset(
+                self._key(operation_id),
+                subscription_id,
+                json.dumps(data),
+            )
 
         return subscription_id
 
     async def unsubscribe(self, subscription_id: str) -> None:
-        await self._client.hdel(self._key(""), subscription_id)
+        operation_id = self._sub_map.pop(subscription_id, "")
+        if operation_id and self._client:
+            await self._client.hdel(self._key(operation_id), subscription_id)
 
     async def publish(self, operation_id: str, data: Any) -> None:
-        await self._pub.publish(
-            self._key(operation_id),
-            json.dumps(data),
-        )
+        if self._pub:
+            await self._pub.publish(
+                self._key(operation_id),
+                json.dumps(data),
+            )
 
     async def next(self, subscription_id: str) -> Any:
-        pubsub = self._sub.pubsub()
-        await pubsub.subscribe(self._key(""))
+        operation_id = self._sub_map.get(subscription_id, "")
+        if not operation_id or not self._sub:
+            return None
 
-        async for message in pubsub.listen():
-            if message["type"] == "message":
-                return json.loads(message["data"])
-            if message["type"] == "unsubscribe":
-                break
+        pubsub = self._sub.pubsub()
+        await pubsub.subscribe(self._key(operation_id))
+
+        try:
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    return json.loads(message["data"])
+                if message["type"] == "unsubscribe":
+                    break
+        finally:
+            await pubsub.unsubscribe(self._key(operation_id))
 
         return None

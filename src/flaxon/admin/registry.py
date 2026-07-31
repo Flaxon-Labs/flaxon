@@ -75,3 +75,7 @@ class Registry:
 
     def __len__(self) -> int:
         return len(self._models)
+
+
+# Global default registry instance for decorators and automatic registration
+default_registry = Registry()

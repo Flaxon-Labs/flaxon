@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from flaxon.http import HTMLResponse, Request, RedirectResponse
+from flaxon.http import HTMLResponse, RedirectResponse, Request
 
 
 class AdminView:
@@ -11,7 +11,7 @@ class AdminView:
         self.request = request
         self.dashboard = dashboard
 
-    async def render(self) -> HTMLResponse:
+    async def render(self) -> HTMLResponse | RedirectResponse:
         raise NotImplementedError
 
 
@@ -44,12 +44,20 @@ class DetailView(AdminView):
 
 
 class CreateView(AdminView):
-    async def render(self) -> HTMLResponse:
+    async def render(self) -> HTMLResponse | RedirectResponse:
         if self.request.method == "POST":
+            # Extract form payload for model creation logic
+            form_data = await self.request.form() if hasattr(self.request, "form") else {}
+            
+            # Hook for model saving instance if supported by model manager
+            if hasattr(self.admin_model, "create_instance"):
+                await self.admin_model.create_instance(form_data)
+
             return RedirectResponse(
                 f"{self.dashboard.url_prefix}/{self.admin_model.get_name()}",
                 status_code=302,
             )
+
         context = {
             "model": self.admin_model,
             "verbose_name": self.admin_model.get_verbose_name(),
@@ -64,12 +72,19 @@ class UpdateView(AdminView):
         super().__init__(admin_model, request, dashboard)
         self.object_id = object_id
 
-    async def render(self) -> HTMLResponse:
+    async def render(self) -> HTMLResponse | RedirectResponse:
         if self.request.method == "POST":
+            form_data = await self.request.form() if hasattr(self.request, "form") else {}
+
+            # Hook for updating model instance
+            if hasattr(self.admin_model, "update_instance"):
+                await self.admin_model.update_instance(self.object_id, form_data)
+
             return RedirectResponse(
                 f"{self.dashboard.url_prefix}/{self.admin_model.get_name()}",
                 status_code=302,
             )
+
         context = {
             "model": self.admin_model,
             "verbose_name": self.admin_model.get_verbose_name(),
@@ -85,12 +100,17 @@ class DeleteView(AdminView):
         super().__init__(admin_model, request, dashboard)
         self.object_id = object_id
 
-    async def render(self) -> HTMLResponse:
+    async def render(self) -> HTMLResponse | RedirectResponse:
         if self.request.method == "POST":
+            # Hook for deleting model instance
+            if hasattr(self.admin_model, "delete_instance"):
+                await self.admin_model.delete_instance(self.object_id)
+
             return RedirectResponse(
                 f"{self.dashboard.url_prefix}/{self.admin_model.get_name()}",
                 status_code=302,
             )
+
         context = {
             "model": self.admin_model,
             "verbose_name": self.admin_model.get_verbose_name(),

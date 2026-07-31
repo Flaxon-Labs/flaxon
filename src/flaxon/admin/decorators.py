@@ -3,18 +3,20 @@ from __future__ import annotations
 from functools import wraps
 from typing import Any, Callable
 
-from .registry import Registry
+from .registry import default_registry
 
 
-def admin_model(**options: Any) -> Callable:
+def admin_model(**options: Any) -> Callable[[type], type]:
+    """Decorator to register a model class with the default admin registry."""
     def decorator(cls: type) -> type:
-        Registry().register(cls, **options)
+        default_registry.register(cls, **options)
         return cls
     return decorator
 
 
-def admin_action(name: str | None = None) -> Callable:
-    def decorator(func: Callable) -> Callable:
+def admin_action(name: str | None = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Decorator to mark a function or method as an admin bulk action."""
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             return func(*args, **kwargs)
@@ -23,8 +25,9 @@ def admin_action(name: str | None = None) -> Callable:
     return decorator
 
 
-def admin_display(header: str | None = None) -> Callable:
-    def decorator(func: Callable) -> Callable:
+def admin_display(header: str | None = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Decorator to mark a method as a custom column display in admin views."""
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             return func(*args, **kwargs)

@@ -1,11 +1,9 @@
-# src/flaxon/graphql/executor.py
 from __future__ import annotations
 
 import asyncio
 from typing import Any
-
-from .exceptions import GraphQLExecutionError
-from .types import List, NonNull
+from .exceptions import GraphQLError, GraphQLValidationError
+from .types import ObjectType, InterfaceType, UnionType, NonNull, List, Scalar
 
 
 async def execute(
@@ -16,219 +14,211 @@ async def execute(
     operation_name: str | None = None,
 ) -> dict[str, Any]:
     variables = variables or {}
-
+    
+    # Locate target operation
     operation = None
+    fragments = {}
+
     for definition in document.definitions:
-        if hasattr(definition, "operation"):
-            if operation_name is None or definition.name == operation_name:
+        kind = getattr(definition, "kind", type(definition).__name__)
+        if kind == "FragmentDefinition" or hasattr(definition, "type_condition"):
+            frag_name = definition.name.value if hasattr(definition.name, "value") else str(definition.name)
+            fragments[frag_name] = definition
+        elif kind == "OperationDefinition" or hasattr(definition, "selection_set"):
+            if operation_name:
+                op_name = definition.name.value if definition.name and hasattr(definition.name, "value") else str(definition.name or "")
+                if op_name == operation_name:
+                    operation = definition
+            elif operation is None:
                 operation = definition
-                break
 
-    if operation is None:
-        raise GraphQLExecutionError("No valid operation found")
+    if not operation:
+        return {"errors": [{"message": "Operation to execute was not found."}]}
 
-    root_type = None
-    if operation.operation == "query":
-        root_type = schema.query
-    elif operation.operation == "mutation":
-        root_type = schema.mutation
-    elif operation.operation == "subscription":
-        root_type = schema.subscription
+    op_type = getattr(operation, "operation", "query").lower()
+    root_type = getattr(schema, op_type, None)
 
-    if root_type is None:
-        raise GraphQLExecutionError(f"Root type '{operation.operation}' is not defined")
+    if not root_type:
+        return {"errors": [{"message": f"Schema does not support operation type '{op_type}'."}]}
 
-    result = await execute_selection_set(
-        root_type,
-        operation.selection_set,
-        None,
-        context,
-        variables,
-        schema,
-    )
+    coerced_variables = resolve_variables(operation, variables)
 
-    return {"data": result}
+    exec_context = {
+        "schema": schema,
+        "document": document,
+        "fragments": fragments,
+        "variables": coerced_variables,
+        "context": context,
+    }
+
+    try:
+        data = await execute_selection_set(
+            exec_context=exec_context,
+            selection_set=operation.selection_set,
+            parent_type=root_type,
+            root_value=None,
+        )
+        return {"data": data}
+    except Exception as exc:
+        return {"errors": [{"message": str(exc)}]}
 
 
 async def execute_selection_set(
-    parent_type: Any,
+    exec_context: dict[str, Any],
     selection_set: Any,
-    parent_value: Any,
-    context: Any,
-    variables: dict[str, Any],
-    schema: Any,
+    parent_type: Any,
+    root_value: Any,
 ) -> dict[str, Any]:
-    result = {}
+    result: dict[str, Any] = {}
 
     for selection in selection_set.selections:
-        if hasattr(selection, "field"):
-            field_name = selection.field.name.value
-            field_args = selection.field.arguments
+        if should_skip(selection, exec_context["variables"]):
+            continue
 
-            field_def = parent_type.fields.get(field_name)
-            if field_def is None:
+        kind = getattr(selection, "kind", type(selection).__name__)
+
+        # Field execution
+        if kind == "Field" or kind == "FieldNode" or hasattr(selection, "alias"):
+            field_name = selection.name.value if hasattr(selection.name, "value") else str(selection.name)
+            response_key = selection.alias.value if getattr(selection, "alias", None) else field_name
+
+            # Introspection
+            if field_name == "__typename":
+                result[response_key] = parent_type.name
                 continue
 
-            args = {}
-            for arg in field_args:
-                arg_value = await evaluate_value(arg.value, variables, context)
-                args[arg.name.value] = arg_value
+            field_def = parent_type.fields.get(field_name) if isinstance(parent_type, (ObjectType, InterfaceType)) else None
+            if not field_def:
+                continue
 
-            field_type = field_def.type
-
+            field_args = resolve_arguments(selection, exec_context["variables"])
             resolved_value = await resolve_field_value(
-                parent_type.name,
-                field_name,
-                parent_value,
-                args,
-                context,
-                schema,
+                field_def=field_def,
+                parent_value=root_value,
+                args=field_args,
+                context=exec_context["context"],
+                info={"field_name": field_name, "schema": exec_context["schema"]},
             )
 
-            if field_type is not None:
-                if isinstance(field_type, NonNull):
-                    field_type = field_type.type
+            result[response_key] = await complete_value(
+                exec_context=exec_context,
+                field_type=field_def.type,
+                selection=selection,
+                value=resolved_value,
+            )
 
-                if isinstance(field_type, List):
-                    if resolved_value is not None:
-                        if not isinstance(resolved_value, list):
-                            resolved_value = [resolved_value]
-                        for i, item in enumerate(resolved_value):
-                            resolved_value[i] = await coerce_value(item, field_type.type)
-                    result[field_name] = resolved_value
-                else:
-                    result[field_name] = await coerce_value(resolved_value, field_type)
-
-        elif hasattr(selection, "inline_fragment"):
-            type_condition = getattr(selection, "type_condition", None)
-            if type_condition is not None:
-                type_name = type_condition.name.value
-                if schema.get_type(type_name):
-                    fragment_type = schema.get_type(type_name)
-                    fragment_result = await execute_selection_set(
-                        fragment_type,
-                        selection.selection_set,
-                        parent_value,
-                        context,
-                        variables,
-                        schema,
-                    )
-                    result.update(fragment_result)
-
-        elif hasattr(selection, "fragment_spread"):
-            fragment_name = selection.fragment_name.name.value
-            fragment = None
-            for definition in getattr(schema, "_fragments", []):
-                if definition.name.value == fragment_name:
-                    fragment = definition
-                    break
-
-            if fragment is not None:
-                fragment_result = await execute_selection_set(
-                    parent_type,
-                    fragment.selection_set,
-                    parent_value,
-                    context,
-                    variables,
-                    schema,
+        # Inline Fragment (... on Type)
+        elif kind == "InlineFragment" or kind == "InlineFragmentNode" or hasattr(selection, "type_condition"):
+            type_condition = selection.type_condition.name.value if hasattr(selection.type_condition, "name") else str(selection.type_condition)
+            if type_condition == parent_type.name:
+                fragment_res = await execute_selection_set(
+                    exec_context=exec_context,
+                    selection_set=selection.selection_set,
+                    parent_type=parent_type,
+                    root_value=root_value,
                 )
-                result.update(fragment_result)
+                result.update(fragment_res)
+
+        # Fragment Spread (... FragmentName)
+        elif kind == "FragmentSpread" or kind == "FragmentSpreadNode" or hasattr(selection, "fragment_name"):
+            frag_name = selection.name.value if hasattr(selection.name, "value") else str(selection.name)
+            frag_def = exec_context["fragments"].get(frag_name)
+            if frag_def:
+                fragment_res = await execute_selection_set(
+                    exec_context=exec_context,
+                    selection_set=frag_def.selection_set,
+                    parent_type=parent_type,
+                    root_value=root_value,
+                )
+                result.update(fragment_res)
 
     return result
 
 
-async def resolve_field_value(
-    type_name: str,
-    field_name: str,
-    parent_value: Any,
-    args: dict[str, Any],
-    context: Any,
-    schema: Any,
-) -> Any:
-    resolver = schema.resolver()
+async def resolve_field_value(field_def: Any, parent_value: Any, args: dict[str, Any], context: Any, info: Any) -> Any:
+    if field_def.resolver and callable(field_def.resolver):
+        res = field_def.resolver(parent_value, args, context, info)
+        if asyncio.iscoroutine(res) or hasattr(res, "__await__"):
+            return await res
+        return res
 
-    class Info:
-        def __init__(self):
-            self.field_name = field_name
-            self.parent_type = type_name
-            self.context = context
+    if isinstance(parent_value, dict):
+        return parent_value.get(info["field_name"])
+    if hasattr(parent_value, info["field_name"]):
+        val = getattr(parent_value, info["field_name"])
+        return val() if callable(val) else val
 
-    info = Info()
-
-    result = await resolver.resolve(
-        type_name,
-        field_name,
-        parent_value,
-        args,
-        context,
-        info,
-    )
-
-    return result
+    return None
 
 
-async def coerce_value(value: Any, field_type: Any) -> Any:
+async def complete_value(exec_context: dict[str, Any], field_type: Any, selection: Any, value: Any) -> Any:
+    if isinstance(field_type, NonNull):
+        completed = await complete_value(exec_context, field_type.type, selection, value)
+        if completed is None:
+            raise GraphQLError("Cannot return null for non-nullable field.")
+        return completed
+
     if value is None:
         return None
 
-    if hasattr(field_type, "serialize"):
+    if isinstance(field_type, List):
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+        return [await complete_value(exec_context, field_type.type, selection, item) for item in value]
+
+    if isinstance(field_type, Scalar):
         return field_type.serialize(value)
 
-    if hasattr(field_type, "resolve"):
-        result = field_type.resolve(value)
-        if hasattr(result, "__await__"):
-            return await result
-        return result
+    if isinstance(field_type, ObjectType):
+        return await execute_selection_set(
+            exec_context=exec_context,
+            selection_set=selection.selection_set,
+            parent_type=field_type,
+            root_value=value,
+        )
 
     return value
 
 
-async def evaluate_value(value_node: Any, variables: dict[str, Any], context: Any) -> Any:
-    from .ast import (
-        BooleanValue,
-        FloatValue,
-        IntValue,
-        ListValue,
-        ObjectValue,
-        StringValue,
-        Variable,
-    )
+def should_skip(selection: Any, variables: dict[str, Any]) -> bool:
+    directives = getattr(selection, "directives", []) or []
+    for directive in directives:
+        name = directive.name.value if hasattr(directive.name, "value") else str(directive.name)
+        args = resolve_arguments(directive, variables)
+        
+        if name == "skip" and args.get("if") is True:
+            return True
+        if name == "include" and args.get("if") is False:
+            return True
+    return False
 
-    if isinstance(value_node, IntValue):
-        return int(value_node.value)
 
-    if isinstance(value_node, FloatValue):
-        return float(value_node.value)
+def resolve_arguments(node: Any, variables: dict[str, Any]) -> dict[str, Any]:
+    args = {}
+    node_args = getattr(node, "arguments", []) or []
+    for arg in node_args:
+        arg_name = arg.name.value if hasattr(arg.name, "value") else str(arg.name)
+        args[arg_name] = resolve_value_node(arg.value, variables)
+    return args
 
-    if isinstance(value_node, StringValue):
+
+def resolve_value_node(value_node: Any, variables: dict[str, Any]) -> Any:
+    kind = getattr(value_node, "kind", type(value_node).__name__)
+    if kind == "VariableNode" or kind == "Variable" or hasattr(value_node, "variable"):
+        var_name = value_node.name.value if hasattr(value_node.name, "value") else str(value_node.name)
+        return variables.get(var_name)
+    if hasattr(value_node, "value"):
         return value_node.value
-
-    if isinstance(value_node, BooleanValue):
-        return value_node.value
-
-    if isinstance(value_node, Variable):
-        return variables.get(value_node.name.value)
-
-    if isinstance(value_node, ListValue):
-        return [await evaluate_value(v, variables, context) for v in value_node.values]
-
-    if isinstance(value_node, ObjectValue):
-        result = {}
-        for field in value_node.fields:
-            result[field.name.value] = await evaluate_value(field.value, variables, context)
-        return result
-
     return value_node
 
 
-def coerce_variable_value(value: Any, type_def: Any) -> Any:
-    if value is None:
-        return None
-
-    if hasattr(type_def, "parse_value"):
-        return type_def.parse_value(value)
-
-    if hasattr(type_def, "parse_literal"):
-        return type_def.parse_literal(value)
-
-    return value
+def resolve_variables(operation: Any, variables: dict[str, Any]) -> dict[str, Any]:
+    coerced = {}
+    var_defs = getattr(operation, "variable_definitions", []) or []
+    for var_def in var_defs:
+        var_name = var_def.variable.name.value if hasattr(var_def.variable.name, "value") else str(var_def.variable.name)
+        if var_name in variables:
+            coerced[var_name] = variables[var_name]
+        elif hasattr(var_def, "default_value") and var_def.default_value:
+            coerced[var_name] = resolve_value_node(var_def.default_value, {})
+    return coerced

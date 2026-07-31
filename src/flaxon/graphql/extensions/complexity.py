@@ -22,7 +22,7 @@ class ComplexityExtension:
         complexity = 0
 
         for definition in document.definitions:
-            if hasattr(definition, "selection_set"):
+            if hasattr(definition, "selection_set") and definition.selection_set:
                 complexity += self._calculate_selection_set(definition.selection_set)
 
         return complexity
@@ -31,20 +31,19 @@ class ComplexityExtension:
         total = 0
 
         for selection in selection_set.selections:
-            if hasattr(selection, "field"):
-                field_name = selection.field.name.value
+            if hasattr(selection, "name"):
+                field_name = selection.name.value if hasattr(selection.name, "value") else str(selection.name)
                 cost = self.get_cost(field_name)
 
-                if selection.selection_set:
+                if getattr(selection, "selection_set", None):
                     total += cost * self._calculate_selection_set(selection.selection_set, depth + 1)
                 else:
                     total += cost
 
-            elif hasattr(selection, "inline_fragment"):
-                if selection.selection_set:
-                    total += self._calculate_selection_set(selection.selection_set, depth + 1)
+            elif getattr(selection, "selection_set", None):
+                total += self._calculate_selection_set(selection.selection_set, depth + 1)
 
-            elif hasattr(selection, "fragment_spread"):
+            else:
                 total += 1
 
         return total
@@ -71,7 +70,3 @@ class ComplexityExtension:
 
     async def after(self, context: dict[str, Any], result: dict[str, Any]) -> None:
         pass
-
-
-class ComplexityExtension:
-    pass

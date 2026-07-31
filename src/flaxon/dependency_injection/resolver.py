@@ -1,10 +1,19 @@
 from __future__ import annotations
 
 import inspect
+import typing
 from collections.abc import Callable
 from typing import Any
 
 from .exceptions import DependencyNotFoundError
+
+
+def _resolved_hints(func: Callable) -> dict[str, Any]:
+    """Best-effort resolution of string annotations (PEP 563) back to real types."""
+    try:
+        return typing.get_type_hints(func)
+    except Exception:
+        return {}
 
 
 class Resolver:
@@ -13,14 +22,15 @@ class Resolver:
 
     def resolve(self, func: Callable) -> dict[str, Any]:
         signature = inspect.signature(func)
+        hints = _resolved_hints(func)
         params = {}
 
         for name, param in signature.parameters.items():
-            annotation = param.annotation
+            annotation = hints.get(name, param.annotation)
 
             if self.container.has(name):
                 params[name] = self.container.get(name)
-            elif annotation is not inspect.Parameter.empty:
+            elif isinstance(annotation, type):
                 try:
                     params[name] = self.container.get(annotation.__name__)
                 except DependencyNotFoundError:
@@ -32,7 +42,7 @@ class Resolver:
         if self.container.has(name):
             return self.container.get(name)
 
-        if annotation is not inspect.Parameter.empty:
+        if isinstance(annotation, type):
             try:
                 return self.container.get(annotation.__name__)
             except DependencyNotFoundError:
@@ -55,14 +65,15 @@ class Resolver:
 
     def get_dependencies(self, func: Callable) -> dict[str, Any]:
         signature = inspect.signature(func)
+        hints = _resolved_hints(func)
         deps = {}
 
         for name, param in signature.parameters.items():
-            annotation = param.annotation
+            annotation = hints.get(name, param.annotation)
 
             if self.container.has(name):
                 deps[name] = self.container.get(name)
-            elif annotation is not inspect.Parameter.empty:
+            elif isinstance(annotation, type):
                 try:
                     deps[name] = self.container.get(annotation.__name__)
                 except DependencyNotFoundError:
