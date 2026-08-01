@@ -17,8 +17,16 @@ class AdminView:
 
 class ChangeListView(AdminView):
     async def render(self) -> HTMLResponse:
+        model_class = self.admin_model.model
+        objects: list[Any] = []
+        if hasattr(model_class, "get_instances"):
+            result = model_class.get_instances()
+            objects = await result if hasattr(result, "__await__") else result
+
         context = {
             "model": self.admin_model,
+            "models": self.dashboard.registry.get_all(),
+            "objects": objects,
             "verbose_name": self.admin_model.get_verbose_name(),
             "verbose_name_plural": self.admin_model.get_verbose_name_plural(),
             "list_display": self.admin_model.list_display,
@@ -35,10 +43,19 @@ class DetailView(AdminView):
         self.object_id = object_id
 
     async def render(self) -> HTMLResponse:
+        model_class = self.admin_model.model
+        obj = None
+        if hasattr(model_class, "get_instance"):
+            result = model_class.get_instance(self.object_id)
+            obj = await result if hasattr(result, "__await__") else result
+
         context = {
             "model": self.admin_model,
+            "models": self.dashboard.registry.get_all(),
+            "object": obj,
             "verbose_name": self.admin_model.get_verbose_name(),
             "object_id": self.object_id,
+            "fields": self.admin_model.fields,
         }
         return await self.dashboard.jinax.render_response("admin/detail.html", context)
 
@@ -50,8 +67,11 @@ class CreateView(AdminView):
             form_data = await self.request.form() if hasattr(self.request, "form") else {}
             
             # Hook for model saving instance if supported by model manager
-            if hasattr(self.admin_model, "create_instance"):
-                await self.admin_model.create_instance(form_data)
+            model_class = self.admin_model.model
+            if hasattr(model_class, "create_instance"):
+                result = model_class.create_instance(form_data)
+                if hasattr(result, "__await__"):
+                    await result
 
             return RedirectResponse(
                 f"{self.dashboard.url_prefix}/{self.admin_model.get_name()}",
@@ -60,6 +80,7 @@ class CreateView(AdminView):
 
         context = {
             "model": self.admin_model,
+            "models": self.dashboard.registry.get_all(),
             "verbose_name": self.admin_model.get_verbose_name(),
             "fields": self.admin_model.fields,
             "readonly_fields": self.admin_model.readonly_fields,
@@ -73,20 +94,30 @@ class UpdateView(AdminView):
         self.object_id = object_id
 
     async def render(self) -> HTMLResponse | RedirectResponse:
+        model_class = self.admin_model.model
+
         if self.request.method == "POST":
             form_data = await self.request.form() if hasattr(self.request, "form") else {}
 
-            # Hook for updating model instance
-            if hasattr(self.admin_model, "update_instance"):
-                await self.admin_model.update_instance(self.object_id, form_data)
+            if hasattr(model_class, "update_instance"):
+                result = model_class.update_instance(self.object_id, form_data)
+                if hasattr(result, "__await__"):
+                    await result
 
             return RedirectResponse(
                 f"{self.dashboard.url_prefix}/{self.admin_model.get_name()}",
                 status_code=302,
             )
 
+        obj = None
+        if hasattr(model_class, "get_instance"):
+            result = model_class.get_instance(self.object_id)
+            obj = await result if hasattr(result, "__await__") else result
+
         context = {
             "model": self.admin_model,
+            "models": self.dashboard.registry.get_all(),
+            "object": obj,
             "verbose_name": self.admin_model.get_verbose_name(),
             "object_id": self.object_id,
             "fields": self.admin_model.fields,
@@ -103,8 +134,11 @@ class DeleteView(AdminView):
     async def render(self) -> HTMLResponse | RedirectResponse:
         if self.request.method == "POST":
             # Hook for deleting model instance
-            if hasattr(self.admin_model, "delete_instance"):
-                await self.admin_model.delete_instance(self.object_id)
+            model_class = self.admin_model.model
+            if hasattr(model_class, "delete_instance"):
+                result = model_class.delete_instance(self.object_id)
+                if hasattr(result, "__await__"):
+                    await result
 
             return RedirectResponse(
                 f"{self.dashboard.url_prefix}/{self.admin_model.get_name()}",
@@ -113,6 +147,7 @@ class DeleteView(AdminView):
 
         context = {
             "model": self.admin_model,
+            "models": self.dashboard.registry.get_all(),
             "verbose_name": self.admin_model.get_verbose_name(),
             "object_id": self.object_id,
         }

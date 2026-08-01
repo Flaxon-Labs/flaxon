@@ -170,7 +170,7 @@ class Flaxon:
         self,
         url_prefix: str = "/admin",
         config: AdminConfig | None = None,
-        template_dir: str = "templates/admin",
+        template_dir: str | None = None,
     ) -> Any:
         """Enable the admin dashboard."""
         self._admin = AdminDashboard(self, config, url_prefix, template_dir)

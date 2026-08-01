@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from flaxon.http import HTMLResponse, RedirectResponse, Request, Response
@@ -9,6 +10,8 @@ from .config import AdminConfig
 from .registry import Registry, default_registry
 from .views import ChangeListView, CreateView, DeleteView, DetailView, UpdateView
 
+_PACKAGE_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
+
 
 class AdminDashboard:
     def __init__(
@@ -16,27 +19,29 @@ class AdminDashboard:
         app: Any,
         config: AdminConfig | None = None,
         url_prefix: str = "/admin",
-        template_dir: str = "templates/admin",
+        template_dir: str | None = None,
         registry: Registry | None = None,
     ) -> None:
         self.app = app
         self.config = config or AdminConfig()
         self.url_prefix = url_prefix.rstrip("/")
         self.registry = registry or default_registry
-        self.jinax = Jinax(template_dir, auto_reload=True)
+        self.jinax = Jinax(template_dir or _PACKAGE_TEMPLATE_DIR, auto_reload=True)
+        self.jinax.add_global("dashboard", self)
         self._register_routes()
 
     def _register_routes(self) -> None:
         router = self.app.router
 
-        router.get(f"{self.url_prefix}/", self.index)
-        router.get(f"{self.url_prefix}/<model_name>", self.list_view)
-        router.get(f"{self.url_prefix}/<model_name>/add", self.add_view)
-        router.post(f"{self.url_prefix}/<model_name>/add", self.add_view)
-        router.get(f"{self.url_prefix}/<model_name>/<object_id>", self.detail_view)
-        router.get(f"{self.url_prefix}/<model_name>/<object_id>/edit", self.edit_view)
-        router.post(f"{self.url_prefix}/<model_name>/<object_id>/edit", self.edit_view)
-        router.post(f"{self.url_prefix}/<model_name>/<object_id>/delete", self.delete_view)
+        router.get(f"{self.url_prefix}/")(self.index)
+        router.get(f"{self.url_prefix}/<model_name>")(self.list_view)
+        router.get(f"{self.url_prefix}/<model_name>/add")(self.add_view)
+        router.post(f"{self.url_prefix}/<model_name>/add")(self.add_view)
+        router.get(f"{self.url_prefix}/<model_name>/<object_id>")(self.detail_view)
+        router.get(f"{self.url_prefix}/<model_name>/<object_id>/edit")(self.edit_view)
+        router.post(f"{self.url_prefix}/<model_name>/<object_id>/edit")(self.edit_view)
+        router.get(f"{self.url_prefix}/<model_name>/<object_id>/delete")(self.delete_view)
+        router.post(f"{self.url_prefix}/<model_name>/<object_id>/delete")(self.delete_view)
 
     def register(self, model: Any, **options: Any) -> None:
         """Register a model with the dashboard's registry."""
