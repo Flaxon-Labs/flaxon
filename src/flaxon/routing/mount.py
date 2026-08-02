@@ -64,20 +64,22 @@ class Mount:
         Convert the mount to a router.
 
         Returns:
-            A router with the mounted app's routes.
+            A router with the mounted app's routes, prefixed with this mount's path.
         """
         if hasattr(self.app, "router"):
-            self._router.include_router(self.app.router)
+            http_routes = list(self.app.router.routes)
+            websocket_routes = list(getattr(self.app.router, "websocket_routes", []))
         elif hasattr(self.app, "routes"):
-            for route in self.app.routes:
-                self._router.add_route(
-                    route.path,
-                    route.endpoint,
-                    methods=route.methods,
-                    name=route.name,
-                )
+            http_routes = list(self.app.routes)
+            websocket_routes = []
         else:
             raise ValueError(f"Cannot mount object of type {type(self.app)}")
+
+        for route in http_routes:
+            self._router.route(route.path, methods=route.methods, name=route.name)(route.endpoint)
+
+        for route in websocket_routes:
+            self._router.websocket(route.path, name=route.name)(route.endpoint)
 
         return self._router
 

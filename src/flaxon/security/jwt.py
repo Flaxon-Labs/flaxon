@@ -94,7 +94,14 @@ def jwt_required(func: Any) -> Any:
     return wrapper
 
 
-def create_jwt_token(user_id: str | int, data: dict[str, Any] | None = None) -> str:
+def create_jwt_token(user_id: str | int, secret_key: str, data: dict[str, Any] | None = None, expires_in: int = 3600) -> str:
+    """
+    Create a signed JWT for a user.
+
+    secret_key must be your application's own secret (e.g. app.config.get_secret_key()).
+    There is intentionally no default secret here -- a shared, guessable default
+    would let anyone forge valid tokens for any user.
+    """
     payload = {"user_id": str(user_id), **(data or {})}
-    jwt = JWT("secret-key")
-    return jwt.encode(payload)
+    jwt = JWT(secret_key)
+    return jwt.encode(payload, expires_in=expires_in)

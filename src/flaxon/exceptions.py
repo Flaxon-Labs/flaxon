@@ -1,92 +1,144 @@
-"""Framework exception types and their HTTP status mappings."""
-
 from __future__ import annotations
 
+import asyncio
+import time
+from collections.abc import Callable
 from typing import Any
 
 
-class FlaxonError(Exception):
-    """Base class for framework errors."""
+class Cache:
+    def __init__(self, default_ttl: int = 300) -> None:
+        self.default_ttl = default_ttl
+        self._cache: dict[str, tuple[Any, float, float]] = {}
+        self._lock = asyncio.Lock()
 
+    async def get(self, key: str, default: Any = None) -> Any:
+        async with self._lock:
+            if key not in self._cache:
+                return default
 
-class HTTPException(FlaxonError):
-    """An exception that can be rendered as an HTTP response."""
+            value, expires, _ = self._cache[key]
+            if expires is not None and time.time() > expires:
+                del self._cache[key]
+                return default
 
-    def __init__(self, status_code: int, detail: str | None = None, *, code: str | None = None) -> None:
-        self.status_code = status_code
-        self.detail = detail or "HTTP error"
-        self.code = code or f"FX-HTTP-{status_code}"
-        super().__init__(self.detail)
+            return value
 
-    def to_dict(self) -> dict[str, Any]:
-        """Return the API error payload."""
-        return {"error": {"code": self.code, "message": self.detail}}
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
+        ttl = ttl or self.default_ttl
+        expires = time.time() + ttl if ttl > 0 else None
+        async with self._lock:
+            self._cache[key] = (value, expires, time.time())
 
+    async def delete(self, key: str) -> None:
+        async with self._lock:
+            self._cache.pop(key, None)
 
-class NotFound(HTTPException):
-    """Raised when no route matches a request."""
+    async def clear(self) -> None:
+        async with self._lock:
+            self._cache.clear()
 
-    def __init__(self, detail: str = "Not found") -> None:
-        super().__init__(404, detail)
+    async def exists(self, key: str) -> bool:
+        async with self._lock:
+            if key not in self._cache:
+                return False
 
+            value, expires, _ = self._cache[key]
+            if expires is not None and time.time() > expires:
+                del self._cache[key]
+                return False
 
-class MethodNotAllowed(HTTPException):
-    """Raised when a route exists but does not accept the method."""
+            return True
 
-    def __init__(self, detail: str = "Method not allowed") -> None:
-        super().__init__(405, detail)
+    async def get_or_set(self, key: str, func: Callable, ttl: int | None = None) -> Any:
+        value = await self.get(key)
+        if value is not None:
+            return value
 
+        if asyncio.iscoroutinefunction(func):
+            value = await func()
+        else:
+            loop = asyncio.get_running_loop()
+            value = await loop.run_in_executor(None, func)
 
-class BadRequest(HTTPException):
-    """Raised for malformed client requests."""
+        await self.set(key, value, ttl)
+        return value
 
-    def __init__(self, detail: str = "Bad request") -> None:
-        super().__init__(400, detail)
+    async def increment(self, key: str, amount: int = 1) -> int:
+        async with self._lock:
+            now = time.time()
+            entry = self._cache.get(key)
+            if entry is not None:
+                value, expires, created = entry
+                if expires is not None and now > expires:
+                    entry = None
 
+            if entry is None:
+                new_value = amount
+                expires = now + self.default_ttl if self.default_ttl > 0 else None
+                self._cache[key] = (new_value, expires, now)
+                return new_value
 
-class Unauthorized(HTTPException):
-    """Raised when authentication is required or invalid."""
+            value, expires, created = entry
+            new_value = int(value) + amount
+            self._cache[key] = (new_value, expires, created)
+            return new_value
 
-    def __init__(self, detail: str = "Unauthorized") -> None:
-        super().__init__(401, detail)
+    async def decrement(self, key: str, amount: int = 1) -> int:
+        return await self.increment(key, -amount)
 
+    async def expire(self, key: str, ttl: int) -> None:
+        async with self._lock:
+            if key not in self._cache:
+                return
 
-class Forbidden(HTTPException):
-    """Raised when the authenticated user lacks permission."""
+            value, _, created = self._cache[key]
+            expires = time.time() + ttl if ttl > 0 else None
+            self._cache[key] = (value, expires, created)
 
-    def __init__(self, detail: str = "Forbidden") -> None:
-        super().__init__(403, detail)
+    async def touch(self, key: str) -> None:
+        async with self._lock:
+            if key not in self._cache:
+                return
 
+            value, expires, created = self._cache[key]
+            if expires is not None:
+                expires = time.time() + (expires - created)
+                self._cache[key] = (value, expires, created)
 
-class RequestTimeout(HTTPException):
-    """Raised when request processing exceeds the allowed time."""
+    async def get_many(self, *keys: str) -> dict[str, Any]:
+        result = {}
+        for key in keys:
+            value = await self.get(key)
+            if value is not None:
+                result[key] = value
+        return result
 
-    def __init__(self, detail: str = "Request timeout") -> None:
-        super().__init__(408, detail, code="FX-TIMEOUT-001")
+    async def set_many(self, items: dict[str, Any], ttl: int | None = None) -> None:
+        for key, value in items.items():
+            await self.set(key, value, ttl)
 
+    async def delete_many(self, *keys: str) -> None:
+        for key in keys:
+            await self.delete(key)
 
-class PayloadTooLarge(HTTPException):
-    """Raised when a request body exceeds the configured size limit."""
+    def get_stats(self) -> dict[str, Any]:
+        total = len(self._cache)
+        expired = 0
+        current_time = time.time()
 
-    def __init__(self, max_size: int, detail: str | None = None) -> None:
-        self.max_size = max_size
-        super().__init__(413, detail or f"Request body exceeds the {max_size}-byte limit", code="FX-PAYLOAD-001")
+        for _, expires, _ in self._cache.values():
+            if expires is not None and current_time > expires:
+                expired += 1
 
+        return {
+            "total_entries": total,
+            "expired_entries": expired,
+            "active_entries": total - expired,
+        }
 
-class TooManyRequests(HTTPException):
-    """Raised when a rate limit is exceeded."""
+    def __contains__(self, key: str) -> bool:
+        return key in self._cache
 
-    def __init__(self, detail: str = "Too many requests") -> None:
-        super().__init__(429, detail, code="FX-RATE-001")
-
-
-class ConfigurationError(FlaxonError):
-    """Raised for invalid framework configuration."""
-
-
-class DependencyError(FlaxonError):
-    """Raised when a dependency cannot be resolved."""
-
-    def __init__(self, detail: str = "Dependency error") -> None:
-        self.detail = detail
-        super().__init__(detail)
+    def __len__(self) -> int:
+        return len(self._cache)

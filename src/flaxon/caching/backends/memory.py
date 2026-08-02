@@ -90,12 +90,19 @@ class MemoryBackend:
 
     async def increment(self, key: str, amount: int = 1) -> int:
         async with self._lock:
-            value = await self.get(key)
-            if value is None:
+            now = time.time()
+            entry = self._cache.get(key)
+            if entry is not None:
+                value, expires, _ = entry
+                if expires is not None and now > expires:
+                    entry = None
+
+            if entry is None:
                 new_value = amount
             else:
-                new_value = int(value) + amount
-            await self.set(key, new_value)
+                new_value = int(entry[0]) + amount
+
+            self._cache[key] = (new_value, None, now)
             return new_value
 
     async def decrement(self, key: str, amount: int = 1) -> int:

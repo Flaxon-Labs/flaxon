@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import inspect
+import json
 from pathlib import Path
 import secrets
 import time
 import traceback
+import typing
 from collections.abc import Callable
 from typing import Any
 import uuid
@@ -14,7 +16,7 @@ import uuid
 from flaxon.admin import AdminConfig, AdminDashboard
 from flaxon.debugging import Dashboard, Debugger, ErrorStore
 from flaxon.dependency_injection import Container
-from flaxon.exceptions import HTTPException
+from flaxon.exceptions import BadRequest, HTTPException
 from flaxon.graphql import GraphQLSchema
 from flaxon.graphql.playground import AltairPlayground, GraphiQLPlayground
 from flaxon.health import HealthRegistry, LivenessProbe, ReadinessProbe, StartupProbe
@@ -25,6 +27,7 @@ from flaxon.plugins import PluginManager
 from flaxon.routing import Router
 from flaxon.sessions import SessionManager
 from flaxon.sessions.backends.memory import MemoryBackend
+from flaxon.validation import Schema
 from flaxon.websocket import WebSocket, WebSocketManager
 
 from .configuration import Config
@@ -86,6 +89,7 @@ class Flaxon:
         # Admin & GraphQL Properties Initialization
         self._admin: AdminDashboard | None = None
         self._graphql_schema: GraphQLSchema | None = None
+        self._asgi_mounts: list[tuple[str, Any]] = []
 
     # ============================================================
     # SYSTEM & DIAGNOSTIC ENDPOINTS
@@ -114,6 +118,33 @@ class Flaxon:
     # ============================================================
     # ROUTING & MIDDLEWARE METHODS
     # ============================================================
+
+    def mount_asgi(self, path: str, app: Any) -> None:
+        """
+        Mount a foreign ASGI application (FastAPI, Django's get_asgi_application(),
+        a WSGI app wrapped with a2wsgi, etc.) at a path prefix.
+
+        Unlike include_router()/Mount, which copies Flaxon-shaped routes, this
+        delegates the entire ASGI call for matching paths straight to the mounted
+        app's own __call__. Flaxon's routing, middleware, and error handling do not
+        apply to that subtree -- the mounted app handles everything itself.
+
+        Example:
+```python
+            from fastapi import FastAPI
+
+            fastapi_app = FastAPI()
+
+            @fastapi_app.get("/hello")
+            def hello():
+                return {"hello": "from fastapi"}
+
+            app.mount_asgi("/fastapi", fastapi_app)
+```
+        """
+        prefix = path.rstrip("/") if path != "/" else ""
+        self._asgi_mounts.append((prefix, app))
+        self._asgi_mounts.sort(key=lambda mount: -len(mount[0]))
 
     def route(
         self, path: str, *, methods: set[str] | list[str] | tuple[str, ...] = ("GET",), name: str | None = None
@@ -280,10 +311,44 @@ class Flaxon:
             for middleware, options in reversed(self._middleware):
                 app = middleware(app, **options)
             self._middleware_stack = app
-        await self._middleware_stack(scope, receive, send)
+
+        if scope.get("type") != "http":
+            await self._middleware_stack(scope, receive, send)
+            return
+
+        try:
+            await self._middleware_stack(scope, receive, send)
+        except HTTPException as exc:
+            response = JSONResponse(exc.to_dict(), status_code=exc.status_code)
+            await response(scope, receive, send)
+        except Exception as exc:
+            request = Request(scope, receive, self)
+            response = await self.debugger.response_for(exc, request, scope)
+            if self.debug:
+                self.error_store.store(
+                    {
+                        "error_id": str(uuid.uuid4()),
+                        "type": type(exc).__name__,
+                        "message": str(exc),
+                        "path": str(scope.get("path", "")),
+                        "timestamp": time.time(),
+                    }
+                )
+            await response(scope, receive, send)
 
     async def _dispatch(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         scope["app"] = self
+
+        if scope.get("type") in ("http", "websocket") and self._asgi_mounts:
+            path = str(scope.get("path", "/"))
+            for prefix, mounted_app in self._asgi_mounts:
+                if path == prefix or path.startswith(f"{prefix}/"):
+                    sub_scope = dict(scope)
+                    sub_scope["path"] = path[len(prefix):] or "/"
+                    sub_scope["root_path"] = scope.get("root_path", "") + prefix
+                    await mounted_app(sub_scope, receive, send)
+                    return
+
         match scope.get("type"):
             case "http":
                 await self._handle_http(scope, receive, send)
@@ -344,15 +409,30 @@ class Flaxon:
 
     async def _invoke(self, endpoint: Callable[..., Any], request: Request | WebSocket, params: dict[str, Any]) -> Any:
         signature = inspect.signature(endpoint)
+        try:
+            hints = typing.get_type_hints(endpoint)
+        except Exception:
+            hints = {}
         container_kwargs = self.container.resolve(endpoint)
         kwargs: dict[str, Any] = {}
         for name, parameter in signature.parameters.items():
+            annotation = hints.get(name, parameter.annotation)
             if name in params:
                 kwargs[name] = params[name]
             elif name in {"request", "socket", "websocket"}:
                 kwargs[name] = request
             elif name in container_kwargs:
                 kwargs[name] = container_kwargs[name]
+            elif (
+                isinstance(request, Request)
+                and isinstance(annotation, type)
+                and issubclass(annotation, Schema)
+            ):
+                try:
+                    body = await request.json()
+                except json.JSONDecodeError as exc:
+                    raise BadRequest("Request body must be valid JSON.") from exc
+                kwargs[name] = annotation.load(body)
             elif parameter.default is not inspect.Parameter.empty:
                 continue
             else:
