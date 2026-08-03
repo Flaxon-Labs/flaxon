@@ -2,217 +2,565 @@
 
 ## Overview
 
-Routing in Flaxon is designed to be intuitive and familiar. Routes are defined using decorators on your Flaxon application instance or on routers.
+Flaxon provides a fast, flexible, and familiar routing system for building web applications and APIs. Routes are registered using decorators on your application or on reusable routers.
 
-## Basic Routes
+**Features**
+
+- Decorator-based routing
+- Async-first request handling
+- Flask-style and brace-style route parameters
+- Nested routers
+- Route groups
+- Named routes
+- URL generation
+- Sub-application mounting
+- Route inspection via CLI
+
+---
+
+# Basic Routes
 
 ```python
 from flaxon import Flaxon
 
 app = Flaxon("my-app")
 
+
 @app.get("/")
 async def home():
-    return {"message": "Hello"}
+    return {"message": "Hello, World!"}
+
 
 @app.post("/users")
 async def create_user():
     return {"created": True}
 
+
 @app.put("/users/<int:user_id>")
 async def update_user(user_id: int):
-    return {"updated": True, "id": user_id}
+    return {
+        "updated": True,
+        "id": user_id,
+    }
+
 
 @app.delete("/users/<int:user_id>")
 async def delete_user(user_id: int):
-    return {"deleted": True, "id": user_id}
+    return {
+        "deleted": True,
+        "id": user_id,
+    }
+```
 
-    Route Methods
-Flaxon supports all standard HTTP methods:
+---
 
-python
+# Supported HTTP Methods
+
+Flaxon supports every standard HTTP method.
+
+```python
 @app.get("/")
+async def get_route():
+    ...
+
+
 @app.post("/")
+async def post_route():
+    ...
+
+
 @app.put("/")
+async def put_route():
+    ...
+
+
 @app.patch("/")
+async def patch_route():
+    ...
+
+
 @app.delete("/")
+async def delete_route():
+    ...
+
+
 @app.head("/")
+async def head_route():
+    ...
+
+
 @app.options("/")
-Path Parameters
-Flask-Style Parameters
-python
+async def options_route():
+    ...
+```
+
+---
+
+# Route Parameters
+
+## Flask-Style Parameters
+
+```python
 @app.get("/users/<int:user_id>")
 async def get_user(user_id: int):
     return {"id": user_id}
 
-@app.get("/posts/<slug:post_slug>")
-async def get_post(post_slug: str):
-    return {"slug": post_slug}
+
+@app.get("/posts/<slug:slug>")
+async def get_post(slug: str):
+    return {"slug": slug}
+
 
 @app.get("/files/<path:file_path>")
 async def get_file(file_path: str):
     return {"path": file_path}
-Brace-Style Parameters
-python
+```
+
+---
+
+## Brace-Style Parameters
+
+```python
 @app.get("/users/{user_id:int}")
 async def get_user(user_id: int):
     return {"id": user_id}
 
-@app.get("/posts/{post_slug:slug}")
-async def get_post(post_slug: str):
-    return {"slug": post_slug}
-Supported Converters
-Converter	Description	Example
-str	String (default)	<name>
-int	Integer	<int:user_id>
-float	Float	<float:price>
-path	Path with slashes	<path:file_path>
-uuid	UUID	<uuid:token>
-slug	Slug (a-z, 0-9, -, _)	<slug:post_slug>
-Route Groups
-Using Router
-python
+
+@app.get("/posts/{slug:slug}")
+async def get_post(slug: str):
+    return {"slug": slug}
+
+
+@app.get("/files/{file_path:path}")
+async def get_file(file_path: str):
+    return {"path": file_path}
+```
+
+---
+
+# Supported Parameter Converters
+
+| Converter | Description | Example |
+|-----------|-------------|---------|
+| `str` | Default string | `<name>` |
+| `int` | Integer | `<int:user_id>` |
+| `float` | Floating point | `<float:price>` |
+| `path` | Path including `/` | `<path:file>` |
+| `uuid` | UUID value | `<uuid:token>` |
+| `slug` | URL slug | `<slug:article>` |
+
+---
+
+# Optional Parameters
+
+```python
+@app.get("/search")
+async def search(request):
+
+    query = request.query.get("q", "")
+
+    page = request.query.get_int(
+        "page",
+        1,
+    )
+
+    return {
+        "query": query,
+        "page": page,
+    }
+```
+
+---
+
+# Route Prefixes
+
+```python
 from flaxon import Router
 
 api = Router(prefix="/api/v1")
 
+
 @api.get("/users")
-async def list_users():
-    return [{"id": 1, "name": "Alice"}]
+async def users():
+    return []
+
+
+@api.get("/posts")
+async def posts():
+    return []
+
+
+app.include_router(api)
+```
+
+Endpoints:
+
+```
+GET /api/v1/users
+GET /api/v1/posts
+```
+
+---
+
+# Routers
+
+```python
+from flaxon import Router
+
+api = Router(prefix="/api")
+
+
+@api.get("/users")
+async def users():
+    return []
+
 
 @api.post("/users")
 async def create_user():
     return {"created": True}
 
+
 app.include_router(api)
-Using RouteGroup
-python
+```
+
+---
+
+# Route Groups
+
+```python
 from flaxon.routing import RouteGroup
 
-group = RouteGroup(prefix="/admin")
+admin = RouteGroup(prefix="/admin")
 
-@group.get("/dashboard")
+
+@admin.get("/dashboard")
 async def dashboard():
     return {"admin": True}
 
-@group.get("/users")
-async def admin_users():
-    return {"users": []}
 
-app.include_router(group.as_router())
-Nested Routers
-python
+@admin.get("/users")
+async def users():
+    return []
+
+
+app.include_router(admin.as_router())
+```
+
+---
+
+# Nested Routers
+
+```python
+from flaxon import Router
+
+api = Router(prefix="/api")
+
 v1 = Router(prefix="/v1")
 v2 = Router(prefix="/v2")
 
+
 @v1.get("/users")
 async def users_v1():
-    return {"version": "v1", "users": []}
+    return {
+        "version": "v1",
+    }
+
 
 @v2.get("/users")
 async def users_v2():
-    return {"version": "v2", "users": []}
+    return {
+        "version": "v2",
+    }
 
-api = Router(prefix="/api")
+
 api.include_router(v1)
 api.include_router(v2)
 
 app.include_router(api)
-Named Routes
-python
-@app.get("/users/<int:user_id>", name="users.detail")
-async def get_user(user_id: int):
-    return {"id": user_id}
+```
 
-# Generate URL
-url = app.url_for("users.detail", user_id=42)
-# url == "/users/42"
-Route Matching Order
-Routes are matched in the order they are registered. More specific routes should be registered before more general routes.
+Available routes
 
-python
-# Specific route first
+```
+/api/v1/users
+/api/v2/users
+```
+
+---
+
+# Named Routes
+
+```python
+@app.get(
+    "/users/<int:user_id>",
+    name="users.detail",
+)
+async def user_detail(user_id: int):
+    return {
+        "id": user_id,
+    }
+```
+
+Generate URLs:
+
+```python
+url = app.url_for(
+    "users.detail",
+    user_id=42,
+)
+
+print(url)
+
+# /users/42
+```
+
+---
+
+# Route Matching
+
+Routes are matched in registration order.
+
+Always place more specific routes before dynamic routes.
+
+```python
 @app.get("/users/me")
-async def get_current_user():
-    return {"user": "current"}
+async def current_user():
+    return {
+        "username": "admin",
+    }
 
-# General route second
+
 @app.get("/users/<int:user_id>")
-async def get_user(user_id: int):
-    return {"id": user_id}
-Error Handling
-python
+async def user(user_id: int):
+    return {
+        "id": user_id,
+    }
+```
+
+---
+
+# Multiple Decorators
+
+A single handler can respond to multiple routes.
+
+```python
+@app.get("/")
+@app.get("/home")
+async def home():
+    return {
+        "message": "Welcome",
+    }
+```
+
+---
+
+# Route Metadata
+
+```python
+@app.get(
+    "/products",
+    name="products.list",
+    tags=["Products"],
+    summary="List products",
+)
+async def products():
+    return []
+```
+
+---
+
+# Error Handling
+
+```python
 from flaxon import HTTPException
 
+
 @app.get("/users/<int:user_id>")
 async def get_user(user_id: int):
+
     if user_id == 0:
-        raise HTTPException(400, "Invalid user ID", code="FX-INVALID-ID")
+        raise HTTPException(
+            400,
+            "Invalid user ID",
+            code="FX-INVALID-ID",
+        )
+
     if user_id == 404:
-        raise HTTPException(404, "User not found", code="FX-USER-404")
-    return {"id": user_id, "name": f"User {user_id}"}
-Mounting Sub-Applications
-python
+        raise HTTPException(
+            404,
+            "User not found",
+            code="FX-USER-404",
+        )
+
+    return {
+        "id": user_id,
+        "name": f"User {user_id}",
+    }
+```
+
+---
+
+# Mounting Applications
+
+```python
+from flaxon import Flaxon
 from flaxon.routing import Mount
 
-admin_app = Flaxon("admin")
+admin = Flaxon("admin")
 
-@admin_app.get("/")
-async def admin_home():
-    return {"admin": True}
 
-app.include_router(Mount("/admin", admin_app))
-Full Example
-python
+@admin.get("/")
+async def dashboard():
+    return {
+        "admin": True,
+    }
+
+
+app.include_router(
+    Mount("/admin", admin)
+)
+```
+
+Routes
+
+```
+/admin/
+```
+
+---
+
+# API Versioning
+
+```python
+from flaxon import Router
+
+v1 = Router(prefix="/api/v1")
+v2 = Router(prefix="/api/v2")
+
+
+@v1.get("/users")
+async def users_v1():
+    return {
+        "version": 1,
+    }
+
+
+@v2.get("/users")
+async def users_v2():
+    return {
+        "version": 2,
+    }
+
+
+app.include_router(v1)
+app.include_router(v2)
+```
+
+---
+
+# Route Inspection
+
+List every registered route.
+
+```bash
+flaxon routes app:app
+```
+
+Example output
+
+```text
+Method   Path                      Name
+GET      /                         home
+POST     /users                    create_user
+PUT      /users/<int:user_id>      update_user
+DELETE   /users/<int:user_id>      delete_user
+GET      /api/v1/users             users
+GET      /about                    about
+```
+
+---
+
+# Complete Example
+
+```python
 from flaxon import Flaxon, Router
 from flaxon.routing import RouteGroup
 
 app = Flaxon("routing-demo")
 
-# Basic routes
+
 @app.get("/")
 async def home():
-    return {"message": "Welcome"}
+    return {
+        "message": "Welcome to Flaxon",
+    }
 
-# Path parameters
+
 @app.get("/users/<int:user_id>")
-async def get_user(user_id: int):
-    return {"id": user_id, "name": f"User {user_id}"}
+async def user(user_id: int):
+    return {
+        "id": user_id,
+        "name": f"User {user_id}",
+    }
 
-# API router
+
 api = Router(prefix="/api/v1")
 
+
 @api.get("/products")
-async def list_products():
-    return [{"id": 1, "name": "Product A"}]
+async def products():
+    return [
+        {
+            "id": 1,
+            "name": "Laptop",
+        },
+        {
+            "id": 2,
+            "name": "Keyboard",
+        },
+    ]
+
 
 app.include_router(api)
 
-# Admin group
+
 admin = RouteGroup(prefix="/admin")
 
+
 @admin.get("/dashboard")
-async def admin_dashboard():
-    return {"stats": {"users": 100, "orders": 50}}
+async def dashboard():
+    return {
+        "users": 152,
+        "orders": 89,
+    }
+
 
 app.include_router(admin.as_router())
 
-# Named route
+
 @app.get("/about", name="about")
 async def about():
-    return {"version": "1.0.0"}
+    return {
+        "framework": "Flaxon",
+        "version": "1.0.0",
+    }
 
-# Generate URL
+
 about_url = app.url_for("about")
-Route Inspection
-bash
-# List all routes
-flaxon routes app:app
+print(about_url)
+```
 
-# Output:
-# Method      Path                      Name
-# GET         /                         home
-# GET         /users/<int:user_id>      get_user
-# GET         /api/v1/products          list_products
-# GET         /admin/dashboard          admin_dashboard
-# GET         /about                    about
+---
+
+# Best Practices
+
+- Group related routes using `Router`.
+- Use API versioning for public APIs.
+- Register specific routes before dynamic routes.
+- Use named routes for URL generation.
+- Keep route handlers focused on request handling.
+- Move business logic into services.
+- Validate request data using schemas.
+- Return consistent JSON responses.
+- Organize large applications into multiple routers.
+- Mount sub-applications when building modular systems.

@@ -1,120 +1,318 @@
 
----
-
-## docs/security.md
-
-```markdown
 # Security
 
 ## Overview
 
-Security is integrated into Flaxon's defaults and documentation. The framework establishes autoescaped templates, structured validation, security headers, request identifiers, redaction, safe production errors, and basic rate limiting.
+Security is an important part of Flaxon's design.
 
-## Built-in Security Features
+Flaxon provides secure defaults and documentation to help developers build safer applications.
 
-### Autoescaping
+The framework includes support for:
 
-Jinax templates autoescape HTML and XML content, preventing XSS attacks.
+- Template autoescaping
+- Request validation
+- Security headers
+- Request identifiers
+- Sensitive data redaction
+- Production-safe error handling
+- Rate limiting
 
-### Request Validation
+Security features reduce common risks, but developers are still responsible for following secure application practices.
 
-Declarative schemas validate request data before processing:
+---
+
+# Built-in Security Features
+
+## Autoescaping
+
+Jinax templates automatically escape HTML and XML content to help prevent Cross-Site Scripting (XSS) attacks.
+
+Example:
+
+```html
+{{ user_input }}
+````
+
+Unsafe characters are escaped before being rendered.
+
+---
+
+# Request Validation
+
+Flaxon supports declarative schemas for validating incoming data before processing.
+
+Example:
 
 ```python
+from flaxon.validation import Schema, fields
+
+
 class CreateUser(Schema):
-    name = fields.String(required=True, min_length=2)
-    email = fields.Email(required=True)
 
-    Security Headers
-Flaxon adds these security headers by default:
+    name = fields.String(
+        required=True,
+        min_length=2
+    )
 
+    email = fields.Email(
+        required=True
+    )
+```
+
+Validation helps prevent malformed or unexpected input from reaching application logic.
+
+---
+
+# Security Headers
+
+Flaxon can apply recommended security headers.
+
+Common headers include:
+
+```
 X-Content-Type-Options: nosniff
 
 X-Frame-Options: DENY
 
 Referrer-Policy: strict-origin-when-cross-origin
 
-Permissions-Policy: geolocation=(), microphone=(), camera=()
+Permissions-Policy:
+geolocation=(),
+microphone=(),
+camera=()
+```
 
-Request IDs
-Every request gets a unique ID for tracing and debugging.
+These headers help protect against:
 
-Redaction
-Sensitive data is redacted in debug output:
+* Content type attacks
+* Clickjacking
+* Unnecessary browser permissions
 
-passwords, secrets, tokens
+---
 
-authorization headers
+# Request IDs
 
-API keys, private keys
+Every request can receive a unique identifier.
 
-credit card information
+Request IDs help with:
 
-Production-Safe Errors
-In production, errors return safe responses without traceback information.
+* Debugging
+* Logging
+* Distributed tracing
+* Production troubleshooting
 
-Rate Limiting
-Prevents abuse through configurable rate limits.
+Example:
 
-Security Recommendations
-Production Checklist
-□ Set FLAXON_DEBUG=false
-□ Set FLAXON_SECRET_KEY (32+ random bytes)
-□ Set FLAXON_ALLOWED_HOSTS to your domains
-□ Use HTTPS
-□ Use secure cookies (Secure, HttpOnly, SameSite)
-□ Implement authentication and authorization
-□ Use rate limiting
-□ Validate all user input
-□ Use parameterized database queries
-□ Keep dependencies updated
-Authentication
-python
+```
+Request-ID: fx-8a72c91d
+```
+
+---
+
+# Sensitive Data Redaction
+
+Flaxon avoids exposing sensitive information in logs and debug output.
+
+Sensitive values should be protected, including:
+
+* Passwords
+* Secrets
+* Authentication tokens
+* API keys
+* Private keys
+* Credit card information
+* Authorization headers
+
+---
+
+# Production-Safe Errors
+
+In production mode, Flaxon returns safe error responses.
+
+Production errors should:
+
+* Hide internal tracebacks
+* Avoid exposing application details
+* Provide useful error identifiers
+
+Detailed debugging information should only be enabled in development environments.
+
+---
+
+# Rate Limiting
+
+Rate limiting helps prevent abuse by restricting excessive requests.
+
+Use cases include:
+
+* API protection
+* Login protection
+* Resource management
+* Abuse prevention
+
+---
+
+# Security Recommendations
+
+## Production Checklist
+
+Before deploying a Flaxon application:
+
+* [ ] Set `FLAXON_DEBUG=false`
+* [ ] Set `FLAXON_SECRET_KEY` with 32+ random bytes
+* [ ] Configure `FLAXON_ALLOWED_HOSTS`
+* [ ] Enable HTTPS
+* [ ] Use secure cookies:
+
+  * `Secure`
+  * `HttpOnly`
+  * `SameSite`
+* [ ] Implement authentication and authorization
+* [ ] Enable rate limiting
+* [ ] Validate all user input
+* [ ] Use parameterized database queries
+* [ ] Keep dependencies updated
+* [ ] Scan dependencies for vulnerabilities
+
+---
+
+# Authentication
+
+Flaxon supports authentication backends for securing protected routes.
+
+Example:
+
+```python
 from flaxon.security import JWTBackend, login_required
 
-app = Flaxon("secure-app")
-backend = JWTBackend(secret_key="your-secret")
+
+app = Flaxon(
+    "secure-app"
+)
+
+
+backend = JWTBackend(
+    secret_key="your-secret"
+)
+
 
 @app.post("/login")
 async def login(request):
-    # Validate credentials
-    user = await authenticate_user(data)
-    token = await backend.create_token(user)
-    return {"token": token}
+
+    user = await authenticate_user(
+        data
+    )
+
+    token = await backend.create_token(
+        user
+    )
+
+    return {
+        "token": token
+    }
+
 
 @app.get("/protected")
 @login_required
 async def protected(request):
-    user = getattr(request, "user", None)
-    return {"user": user.to_dict()}
-CSRF Protection
-python
+
+    user = getattr(
+        request,
+        "user",
+        None
+    )
+
+    return {
+        "user": user.to_dict()
+    }
+```
+
+---
+
+# CSRF Protection
+
+For applications using cookies and browser sessions, enable CSRF protection.
+
+Example:
+
+```python
 from flaxon.security import CSRFMiddleware
 
-app.add_middleware(CSRFMiddleware, secret_key="your-secret")
-CORS Configuration
-python
+
+app.add_middleware(
+    CSRFMiddleware,
+    secret_key="your-secret"
+)
+```
+
+---
+
+# CORS Configuration
+
+Configure Cross-Origin Resource Sharing (CORS) carefully.
+
+Example:
+
+```python
 from flaxon.middleware import CORSMiddleware
+
 
 app.add_middleware(
     CORSMiddleware,
-    allowed_origins=["https://example.com"],
-    allow_credentials=True,
+    allowed_origins=[
+        "https://example.com"
+    ],
+    allow_credentials=True
 )
-Rate Limiting
-python
+```
+
+Avoid allowing unrestricted origins in production environments.
+
+---
+
+# Rate Limiting Configuration
+
+Example:
+
+```python
 from flaxon.security import RateLimitMiddleware
 
-app.add_middleware(RateLimitMiddleware, requests=60, window_seconds=60)
-Threat Mitigation
-Threat	Control
-XSS	Jinja2 autoescape, CSP
-SQL Injection	Parameterized queries, validation
-Credential Theft	Secure password hashing, MFA
-Token Abuse	Short tokens, refresh rotation
-CSRF	CSRF tokens
-DDoS	Rate limiting, timeouts
-Data Leakage	Redaction, safe errors
-Supply Chain	Pinned dependencies, scanning
-Reporting Vulnerabilities
-If you discover a security vulnerability, please email aldanehutchinson5@gmail.com or open a private security advisory on GitHub.
+
+app.add_middleware(
+    RateLimitMiddleware,
+    requests=60,
+    window_seconds=60
+)
+```
+
+---
+
+# Threat Mitigation
+
+| Threat               | Control                                    |
+| -------------------- | ------------------------------------------ |
+| XSS                  | Template escaping, Content Security Policy |
+| SQL Injection        | Parameterized queries, validation          |
+| Credential Theft     | Secure password hashing, MFA               |
+| Token Abuse          | Short-lived tokens, refresh rotation       |
+| CSRF                 | CSRF tokens                                |
+| DDoS                 | Rate limiting, timeouts                    |
+| Data Leakage         | Redaction, safe error handling             |
+| Supply Chain Attacks | Dependency pinning, security scanning      |
+
+---
+
+# Reporting Vulnerabilities
+
+If you discover a security vulnerability in Flaxon:
+
+Please report it responsibly.
+
+Contact:
+
+`aldanehutchinson5@gmail.com`
+
+or create a private security advisory through the Flaxon GitHub repository.
+
+Please do not publicly disclose security issues before they are reviewed and addressed.
+

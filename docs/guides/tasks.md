@@ -1,216 +1,684 @@
-
----
-
-## docs/guides/tasks.md
-
-```markdown
 # Tasks
 
 ## Overview
 
-Flaxon provides a task queue system for background job processing with retries, scheduling, and result storage.
+Flaxon includes a background task system for running long-running jobs outside the normal request lifecycle.
 
-## Defining Tasks
+Tasks support:
+
+- Background execution
+- Async and sync functions
+- Task queues
+- Workers
+- Scheduling
+- Retries
+- Timeouts
+- Priorities
+- Result storage
+- Task monitoring
+- Custom backends
+
+Common use cases:
+
+- Sending emails
+- Processing images/videos
+- Generating reports
+- Data processing
+- Notifications
+- Scheduled maintenance jobs
+
+---
+
+# Defining Tasks
+
+Tasks are created using the `@task` decorator.
 
 ```python
 from flaxon.tasks import task
 
+
 @task(name="send_email")
-async def send_email(to: str, subject: str, body: str):
-    # Send email
-    return {"sent": True, "to": to}
+async def send_email(
+    to: str,
+    subject: str,
+    body: str,
+):
+    # Send email logic
+    return {
+        "sent": True,
+        "to": to,
+    }
+
 
 @task(name="process_image")
 def process_image(image_path: str):
-    # CPU-intensive processing
-    return {"processed": True}
 
-    Running Tasks
-python
-from flaxon.tasks import TaskQueue, TaskRegistry
+    # CPU intensive processing
+    return {
+        "processed": True,
+        "file": image_path,
+    }
+````
+
+---
+
+# Registering Tasks
+
+Tasks must be registered before they can run.
+
+```python
+from flaxon.tasks import (
+    TaskRegistry,
+    TaskQueue,
+)
 
 registry = TaskRegistry()
 queue = TaskQueue()
 
-# Register tasks
-registry.register("send_email", send_email)
-registry.register("process_image", process_image)
 
-# Push task to queue
-task = Task("send_email", send_email, args=["user@example.com", "Hello", "World"])
-await queue.push(task)
+registry.register(
+    "send_email",
+    send_email,
+)
 
-# Or use the registry
-task = registry.create_task("send_email", args=["user@example.com", "Hello", "World"])
+
+registry.register(
+    "process_image",
+    process_image,
+)
+```
+
+---
+
+# Creating Tasks
+
+Create a task instance and push it to the queue.
+
+```python
+from flaxon.tasks import Task
+
+
+email_task = Task(
+    "send_email",
+    send_email,
+    args=[
+        "user@example.com",
+        "Welcome",
+        "Hello World",
+    ],
+)
+
+
+await queue.push(email_task)
+```
+
+---
+
+# Creating Tasks From Registry
+
+```python
+task = registry.create_task(
+    "send_email",
+    args=[
+        "user@example.com",
+        "Hello",
+        "Welcome",
+    ],
+)
+
+
 await queue.push(task)
-Starting Workers
-bash
-# Start a worker
+```
+
+---
+
+# Running Workers
+
+Workers execute queued tasks.
+
+Start a worker:
+
+```bash
+flaxon worker app:app
+```
+
+Multiple workers:
+
+```bash
 flaxon worker app:app --concurrency 4
+```
 
-# With specific queue
-flaxon worker app:app --queue email --concurrency 2
-Scheduling Tasks
-python
+Specific queue:
+
+```bash
+flaxon worker app:app \
+    --queue email \
+    --concurrency 2
+```
+
+---
+
+# Task Queues
+
+Multiple queues can separate workloads.
+
+Example:
+
+```python
+email_queue = TaskQueue(
+    name="email"
+)
+
+
+image_queue = TaskQueue(
+    name="images"
+)
+```
+
+Push tasks:
+
+```python
+await email_queue.push(
+    email_task
+)
+
+
+await image_queue.push(
+    image_task
+)
+```
+
+---
+
+# Scheduling Tasks
+
+Flaxon supports delayed and recurring tasks.
+
+```python
 from flaxon.tasks import Scheduler
 
+
 scheduler = Scheduler(queue)
+```
 
-# Schedule a one-time task
+---
+
+## Delayed Task
+
+Run after a delay.
+
+```python
 scheduler.schedule(
-    task=Task("send_email", send_email, args=["user@example.com", "Hello"]),
-    delay=60,  # 60 seconds from now
+    task=email_task,
+    delay=60,
 )
+```
 
-# Schedule recurring task
+The task runs after:
+
+```
+60 seconds
+```
+
+---
+
+## Recurring Tasks
+
+Run repeatedly.
+
+```python
 scheduler.schedule(
-    task=Task("process_image", process_image),
-    interval=300,  # Every 5 minutes
+    task=image_task,
+    interval=300,
 )
+```
 
-# Scheduled decorator
+Runs every:
+
+```
+5 minutes
+```
+
+---
+
+# Scheduled Decorator
+
+```python
 from flaxon.tasks import scheduled_task
 
-@scheduled_task(interval=60)
-async def cleanup_tokens():
-    # Run every minute
-    await db.execute("DELETE FROM expired_tokens")
-Task Results
-python
-task = Task("send_email", send_email, args=["user@example.com", "Hello"])
-await queue.push(task)
 
-# Poll for result
+@scheduled_task(
+    interval=60
+)
+async def cleanup_tokens():
+
+    await db.execute(
+        "DELETE FROM expired_tokens"
+    )
+```
+
+Runs every minute.
+
+---
+
+# Task Results
+
+Tasks can store execution results.
+
+```python
+task = Task(
+    "send_email",
+    send_email,
+    args=[
+        "user@example.com",
+        "Hello",
+    ],
+)
+
+
+await queue.push(task)
+```
+
+Check result:
+
+```python
+import asyncio
+
+
 while True:
-    result = await queue.get_result(task.id)
+
+    result = await queue.get_result(
+        task.id
+    )
+
     if result.is_done():
         break
+
     await asyncio.sleep(1)
 
-print(result.result)  # {"sent": True, "to": "user@example.com"}
-Retry Policies
-python
+
+print(result.result)
+```
+
+Example:
+
+```json
+{
+    "sent": true,
+    "to": "user@example.com"
+}
+```
+
+---
+
+# Retry Policies
+
+Tasks can automatically retry after failures.
+
+```python
 from flaxon.tasks import RetryPolicy
 
-retry_policy = RetryPolicy(
+
+policy = RetryPolicy(
     max_retries=5,
-    delay=1.0,
-    backoff=2.0,
-    max_delay=60.0,
+    delay=1,
+    backoff=2,
+    max_delay=60,
     random_jitter=0.1,
 )
+```
+
+Use policy:
+
+```python
+@task(
+    name="payment",
+    retry_policy=policy,
+)
+async def process_payment():
+
+    return {
+        "success": True
+    }
+```
+
+Retry behavior:
+
+```
+Attempt 1
+↓
+Wait 1 second
+
+Attempt 2
+↓
+Wait 2 seconds
+
+Attempt 3
+↓
+Wait 4 seconds
+```
+
+---
+
+# Task Timeouts
+
+Prevent tasks from running forever.
+
+```python
+@task(
+    name="long_task",
+    timeout=30,
+)
+async def long_task():
+
+    await process_data()
+```
+
+The task is cancelled after:
+
+```
+30 seconds
+```
+
+---
+
+# Task Priorities
+
+Higher priority tasks execute first.
+
+```python
+@task(
+    name="urgent",
+    priority=10,
+)
+async def urgent_task():
+    pass
+
+
 
 @task(
-    name="retry_task",
-    retry_policy=retry_policy,
+    name="normal",
+    priority=1,
 )
-async def retry_task():
-    # Will retry up to 5 times with exponential backoff
-    return {"success": True}
-Task Timeouts
-python
-@task(name="timeout_task", timeout=30)
-async def long_running_task():
-    # Will be cancelled after 30 seconds
-    return {"done": True}
-Task Priorities
-python
-@task(name="high_priority", priority=10)
-async def high_priority_task():
+async def normal_task():
     pass
+```
 
-@task(name="low_priority", priority=0)
-async def low_priority_task():
-    pass
-Task Signals
-python
-from flaxon.tasks import Signal, connect_signal
+Priority:
 
-def on_success(task_id, result):
-    print(f"Task {task_id} completed: {result}")
+```
+10 → High
+1  → Normal
+0  → Low
+```
 
-def on_failure(task_id, error):
-    print(f"Task {task_id} failed: {error}")
+---
 
-connect_signal("my_task", Signal.ON_SUCCESS, on_success)
-connect_signal("my_task", Signal.ON_FAILURE, on_failure)
-Custom Backend
-python
-from flaxon.tasks.backends import CustomBackend
+# Task Signals
+
+Listen for task events.
+
+```python
+from flaxon.tasks import (
+    Signal,
+    connect_signal,
+)
+
+
+def success(task_id, result):
+
+    print(
+        f"{task_id} completed"
+    )
+
+
+def failure(task_id, error):
+
+    print(
+        f"{task_id} failed"
+    )
+
+
+connect_signal(
+    "send_email",
+    Signal.ON_SUCCESS,
+    success,
+)
+
+
+connect_signal(
+    "send_email",
+    Signal.ON_FAILURE,
+    failure,
+)
+```
+
+---
+
+# Custom Storage Backend
+
+Task results can be stored using custom backends.
+
+Example Redis backend:
+
+```python
+import json
+
 
 class RedisBackend:
-    def __init__(self, redis_client):
-        self.redis = redis_client
+
+    def __init__(self, redis):
+
+        self.redis = redis
+
 
     async def store_task(self, task):
-        await self.redis.set(f"task:{task.id}", json.dumps(task.to_dict()))
+
+        await self.redis.set(
+            f"task:{task.id}",
+            json.dumps(
+                task.to_dict()
+            ),
+        )
+
 
     async def get_task(self, task_id):
-        data = await self.redis.get(f"task:{task_id}")
-        return Task.from_dict(json.loads(data))
 
-backend = CustomBackend(RedisBackend(redis_client))
-queue = TaskQueue(backend=backend)
-Complete Example
-python
+        data = await self.redis.get(
+            f"task:{task_id}"
+        )
+
+        return Task.from_dict(
+            json.loads(data)
+        )
+```
+
+Enable backend:
+
+```python
+queue = TaskQueue(
+    backend=RedisBackend(redis)
+)
+```
+
+---
+
+# Task Monitoring
+
+Check queue status.
+
+```python
+@app.get("/tasks/status")
+async def task_status():
+
+    return {
+
+        "pending":
+            await queue.pending_count(),
+
+        "running":
+            await queue.running_count(),
+
+        "completed":
+            await queue.completed_count(),
+
+        "failed":
+            await queue.failed_count(),
+
+    }
+```
+
+---
+
+# Complete Example
+
+```python
+import asyncio
+
 from flaxon import Flaxon
+
 from flaxon.tasks import (
     Task,
     TaskQueue,
     TaskRegistry,
-    Worker,
-    Scheduler,
     RetryPolicy,
     task,
 )
 
-app = Flaxon("tasks-demo")
 
-# Define tasks
-@task(name="send_email", retry_policy=RetryPolicy(max_retries=3))
-async def send_email(to: str, subject: str, body: str):
-    # Simulate sending email
-    await asyncio.sleep(1)
-    return {"sent": True, "to": to}
+app = Flaxon(
+    "tasks-demo"
+)
 
-@task(name="process_report")
-async def process_report(data: dict):
-    return {"processed": True, "result": data}
 
-# Setup
-registry = TaskRegistry()
 queue = TaskQueue()
 
-registry.register("send_email", send_email)
-registry.register("process_report", process_report)
+registry = TaskRegistry()
 
-@app.post("/send-email")
-async def send_email_endpoint(request):
+
+
+@task(
+    name="send_email",
+    retry_policy=RetryPolicy(
+        max_retries=3
+    ),
+)
+async def send_email(
+    to,
+    subject,
+    body,
+):
+
+    await asyncio.sleep(1)
+
+    return {
+        "sent": True,
+        "to": to,
+    }
+
+
+
+registry.register(
+    "send_email",
+    send_email,
+)
+
+
+
+@app.post("/email")
+async def email(request):
+
     data = await request.json()
-    task = Task("send_email", send_email, args=[data["to"], data["subject"], data["body"]])
-    await queue.push(task)
-    return {"task_id": task.id, "status": "queued"}
 
-@app.get("/task/<task_id>")
-async def get_task_status(task_id: str):
-    result = await queue.get_result(task_id)
+
+    job = Task(
+        "send_email",
+        send_email,
+        args=[
+            data["to"],
+            data["subject"],
+            data["body"],
+        ],
+    )
+
+
+    await queue.push(job)
+
+
+    return {
+
+        "task_id": job.id,
+
+        "status": "queued",
+
+    }
+
+
+
+@app.get("/tasks/<task_id>")
+async def task_status(task_id):
+
+    result = await queue.get_result(
+        task_id
+    )
+
+
     if result is None:
-        return {"status": "not_found"}
+
+        return {
+            "status": "not_found"
+        }
+
+
     return result.to_dict()
 
-# Worker endpoints
-@app.post("/scheduler/start")
-async def start_scheduler():
-    scheduler = Scheduler(queue)
-    await scheduler.start()
-    return {"status": "started"}
 
-# Health check
-@app.get("/tasks/health")
-async def tasks_health():
+
+@app.get("/health/tasks")
+async def health():
+
     return {
-        "pending": await queue.pending_count(),
-        "running": await queue.running_count(),
-        "completed": await queue.completed_count(),
-        "failed": await queue.failed_count(),
+
+        "pending":
+            await queue.pending_count(),
+
+        "running":
+            await queue.running_count(),
+
+        "completed":
+            await queue.completed_count(),
+
+        "failed":
+            await queue.failed_count(),
+
     }
+```
+
+---
+
+# Best Practices
+
+* Keep tasks small and focused.
+* Use retries for unreliable operations.
+* Set timeouts for external services.
+* Use queues to separate workloads.
+* Store large results externally.
+* Monitor failed tasks.
+* Use idempotent tasks.
+* Avoid blocking async workers.
+* Use scheduled tasks for maintenance.
+* Use dedicated workers for heavy processing.
+
+---
+
+# Next Steps
+
+Continue with:
+
+* WebSockets
+* Events
+* Background Workers
+* Caching
+* Database Integration
+* Performance Optimization
+

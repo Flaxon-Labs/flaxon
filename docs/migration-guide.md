@@ -1,154 +1,285 @@
 
----
 
-## docs/migration-guide.md
 
-```markdown
 # Migration Guide
 
-## Overview
+This guide helps developers migrate existing applications from popular Python frameworks to **Flaxon**.
 
-This guide helps you migrate from other frameworks to Flaxon.
+Flaxon provides a modern, async-first approach while keeping familiar patterns from frameworks like Flask, Django, and FastAPI.
 
-## Migrating from Flask
+---
 
-### Route Decorators
+# Migrating from Flask
 
-Flask:
+## Route Decorators
+
+### Flask
+
 ```python
 @app.route("/users/<int:user_id>")
 def get_user(user_id):
     return jsonify({"id": user_id})
+````
 
-Flaxon:
+### Flaxon
 
-python
+```python
 @app.get("/users/<int:user_id>")
 async def get_user(user_id: int):
     return {"id": user_id}
-Request and Response
-Flask:
+```
 
-python
+---
+
+## Request and Response
+
+### Flask
+
+```python
 data = request.get_json()
-return jsonify({"status": "ok"})
-Flaxon:
 
-python
+return jsonify({
+    "status": "ok"
+})
+```
+
+### Flaxon
+
+```python
 data = await request.json()
-return {"status": "ok"}
-Validation
-Flask:
 
-python
-# Manual validation
-Flaxon:
+return {
+    "status": "ok"
+}
+```
 
-python
+---
+
+## Validation
+
+### Flask
+
+Flask usually requires manual validation:
+
+```python
+if not username:
+    return {"error": "Username required"}
+```
+
+### Flaxon
+
+Flaxon provides schema-based validation:
+
+```python
 class CreateUser(Schema):
     name = fields.String(required=True)
-WebSockets
-Flask:
+```
 
-python
+---
+
+## WebSockets
+
+### Flask
+
+Requires an additional extension:
+
+```python
 # Requires Flask-SocketIO
-Flaxon:
+```
 
-python
+### Flaxon
+
+Built-in async WebSocket support:
+
+```python
 @app.websocket("/ws/chat")
 async def chat(socket):
     await socket.accept()
-Migrating from Django
-Views
-Django:
+```
 
-python
+---
+
+# Migrating from Django
+
+## Views
+
+### Django
+
+```python
 def get_user(request, user_id):
-    return JsonResponse({"id": user_id})
-Flaxon:
+    return JsonResponse({
+        "id": user_id
+    })
+```
 
-python
+### Flaxon
+
+```python
 @app.get("/users/<int:user_id>")
 async def get_user(user_id: int):
-    return {"id": user_id}
-Serializers
-Django REST Framework:
+    return {
+        "id": user_id
+    }
+```
 
-python
+---
+
+## Serializers
+
+### Django REST Framework
+
+```python
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "name"]
-Flaxon:
+        fields = [
+            "id",
+            "name"
+        ]
+```
 
-python
+### Flaxon
+
+```python
 class UserSchema(Schema):
     id = fields.Integer()
     name = fields.String()
-Migrating from FastAPI
-Path Parameters
-FastAPI:
+```
 
-python
+---
+
+# Migrating from FastAPI
+
+## Path Parameters
+
+### FastAPI
+
+```python
 @app.get("/users/{user_id}")
 async def get_user(user_id: int):
-    return {"id": user_id}
-Flaxon:
+    return {
+        "id": user_id
+    }
+```
 
-python
+### Flaxon
+
+```python
 @app.get("/users/<int:user_id>")
 async def get_user(user_id: int):
-    return {"id": user_id}
-Validation
-FastAPI:
+    return {
+        "id": user_id
+    }
+```
 
-python
+---
+
+## Validation
+
+### FastAPI
+
+```python
 class User(BaseModel):
     name: str
     email: EmailStr
-Flaxon:
+```
 
-python
+### Flaxon
+
+```python
 class User(Schema):
     name = fields.String(required=True)
     email = fields.Email(required=True)
-Common Patterns
-Database Connection
-python
+```
+
+---
+
+# Common Patterns
+
+## Database Connection
+
+### Flaxon Startup and Shutdown
+
+```python
 @app.on_startup
 async def startup():
     app.state.db = await create_pool()
 
+
 @app.on_shutdown
 async def shutdown():
     await app.state.db.close()
-Dependency Injection
-python
+```
+
+---
+
+# Dependency Injection
+
+Flaxon supports dependency injection for managing application services.
+
+```python
 from flaxon.dependency_injection import Container, inject
 
+
 container = Container()
-container.register_instance("db", db_pool)
+
+container.register_instance(
+    "db",
+    db_pool
+)
+
 
 @inject(container)
 async def get_users(db):
-    return await db.fetch_all("SELECT * FROM users")
-Testing
-python
+    return await db.fetch_all(
+        "SELECT * FROM users"
+    )
+```
+
+---
+
+# Testing
+
+Flaxon provides a testing client for application testing.
+
+```python
 from flaxon.testing import TestClient
+
 
 def test_get_users():
     client = TestClient(app)
+
     response = client.get("/users")
+
     assert response.status_code == 200
-Breaking Changes
-0.1.0 to Future Versions
-API may change before 1.0
+```
 
-Check CHANGELOG.md for updates
+---
 
-Use semantic versioning
+# Breaking Changes
 
-Getting Help
-GitHub Issues
+## Version 0.1.0 → Future Versions
 
-Discussions
+Before Flaxon reaches version `1.0`, some APIs may change.
+
+Migration notes:
+
+* Check `CHANGELOG.md` before upgrading.
+* Follow semantic versioning.
+* Review deprecated features before updating.
+
+---
+
+# Getting Help
+
+If you need help migrating:
+
+## GitHub Issues
+
+Report bugs or migration problems through GitHub Issues.
+
+## Discussions
+
+Ask questions and share migration tips through GitHub Discussions.
+
+```

@@ -1,86 +1,226 @@
 
----
-
-## docs/performance.md
-
-```markdown
 # Performance
 
 ## Overview
 
-Flaxon is designed to be performant for its intended use cases. It optimizes for I/O-bound workloads, not CPU-bound calculations.
+Flaxon is designed to provide efficient performance for modern backend applications.
 
-## Performance Philosophy
+It focuses on:
 
-"Fast" means measured low overhead for its intended workloads and efficient concurrency for I/O-bound applications — not an unqualified claim that Python is always faster than Node.js, Java, Go, or Rust.
+- Low framework overhead
+- Efficient asynchronous I/O
+- Scalable request handling
+- Developer-friendly performance optimization
 
-## Optimization Areas
+Flaxon is optimized for **I/O-bound workloads** such as:
+
+- APIs
+- Web applications
+- Real-time applications
+- Dashboards
+- Chat systems
+- Background services
+
+It is not designed to make CPU-heavy calculations faster. CPU-intensive workloads should use specialized tools, worker processes, or optimized services.
+
+---
+
+# Performance Philosophy
+
+"Fast" should be measured by real-world performance.
+
+Flaxon's performance goals focus on:
+
+- Low request overhead
+- Efficient concurrency
+- Reduced unnecessary processing
+- Predictable scaling behavior
+
+Performance claims should be based on measurable benchmarks rather than comparing languages or frameworks in general.
+
+Flaxon does not claim that Python is always faster than Node.js, Java, Go, or Rust. Instead, it focuses on making Python practical for scalable production applications.
+
+---
+
+# Optimization Areas
 
 | Area | Optimization | Measurement |
 |------|--------------|-------------|
-| Routing | Precompiled patterns, radix/trie | Requests/second, latency |
-| JSON | Compact encoding, optional faster serializer | Payload size, serialization time |
-| Middleware | Avoid unnecessary wrappers | Per-layer microseconds |
-| Validation | Cache schema metadata | Validation latency by payload |
-| Templates | Cache compiled templates | Render latency, cache hit rate |
-| WebSockets | Bound queues, efficient room lookup | Connections, messages/sec |
+| Routing | Precompiled routes and efficient route matching | Requests/second, latency |
+| JSON Handling | Compact encoding and optional faster serializers | Serialization time, payload size |
+| Middleware | Minimal processing overhead | Per-layer execution time |
+| Validation | Cached schema metadata | Validation latency |
+| Templates | Compiled template caching | Render time, cache hit rate |
+| WebSockets | Efficient connections, queues, and room management | Connections, messages/second |
 
-## Scaling Model
+---
 
-1. Keep HTTP workers stateless
-2. Run more than one process for CPU and reliability
-3. Place durable data in databases and files in object storage
-4. Use Redis for caching, rate limits, sessions, and WebSocket fan-out
-5. Move CPU-heavy jobs to workers or specialized services
-6. Use a reverse proxy for TLS, limits, health checks, and rolling deployment
+# Scaling Model
 
-## Benchmarking
+Flaxon applications should scale using proven backend architecture patterns.
 
-Flaxon includes benchmarks in the `benchmarks/` directory:
+Recommended approach:
+
+1. Keep HTTP workers stateless.
+2. Run multiple application processes for reliability and performance.
+3. Store persistent data in databases and object storage.
+4. Use Redis for:
+   - Caching
+   - Rate limiting
+   - Sessions
+   - WebSocket message distribution
+5. Move CPU-heavy workloads to background workers or specialized services.
+6. Use reverse proxies for:
+   - TLS termination
+   - Traffic management
+   - Health checks
+   - Rolling deployments
+
+---
+
+# Benchmarking
+
+Flaxon provides benchmark tools inside the `benchmarks/` directory.
+
+Run all benchmarks:
 
 ```bash
-# Run all benchmarks
 python scripts/benchmark.py
+````
 
-# Run specific benchmark
+Run a specific benchmark:
+
+```bash
 python benchmarks/routing_benchmark.py
+```
 
-Performance Tips
-Use Async Where Possible
-python
-# Good
+Benchmark results should always be measured on the target hardware and deployment environment.
+
+---
+
+# Performance Tips
+
+## Use Async Where Possible
+
+For I/O operations such as databases, APIs, and file operations, use asynchronous functions.
+
+### Recommended
+
+```python
 async def get_user(user_id: int):
-    return await db.fetch_row("SELECT * FROM users WHERE id = $1", user_id)
+    return await db.fetch_row(
+        "SELECT * FROM users WHERE id = $1",
+        user_id
+    )
+```
 
-# Avoid blocking
+### Avoid Blocking Operations
+
+```python
 def get_user(user_id: int):
-    return db.fetch_row_sync("SELECT * FROM users WHERE id = $1", user_id)
-Use Connection Pooling
-python
+    return db.fetch_row_sync(
+        "SELECT * FROM users WHERE id = $1",
+        user_id
+    )
+```
+
+Blocking operations can reduce concurrency and slow down applications handling many requests.
+
+---
+
+# Use Connection Pooling
+
+Database connection pools improve performance by reusing existing connections.
+
+Example:
+
+```python
 @app.on_startup
 async def startup():
     app.state.db = await create_pool()
 
+
 @app.get("/users")
 async def get_users():
+
     async with app.state.db.acquire() as conn:
-        return await conn.fetch("SELECT * FROM users")
-Cache Frequently Accessed Data
-python
+        return await conn.fetch(
+            "SELECT * FROM users"
+        )
+```
+
+---
+
+# Cache Frequently Accessed Data
+
+Caching reduces repeated database queries and improves response times.
+
+Example:
+
+```python
 from flaxon.caching import cached
+
 
 @cached(ttl=60)
 async def get_users():
-    return await db.fetch_all("SELECT * FROM users")
-Use Redis for Rate Limiting
-python
+
+    return await db.fetch_all(
+        "SELECT * FROM users"
+    )
+```
+
+---
+
+# Use Redis for Distributed Rate Limiting
+
+For applications running multiple servers, distributed rate limiting can be handled with Redis.
+
+Example:
+
+```python
 from flaxon.security import DistributedRateLimiter
 
-limiter = DistributedRateLimiter(redis_client)
+
+limiter = DistributedRateLimiter(
+    redis_client
+)
+
 
 @app.get("/api")
 async def api(request):
-    if not await limiter.check(request.client[0], requests=60):
-        raise HTTPException(429, "Too many requests")
-Realistic Goals
-Flaxon should make Python suitable for many chat, social, dashboard, and mobile backends, while allowing high-load subsystems to use optimized services or other languages when evidence supports that choice.
+
+    allowed = await limiter.check(
+        request.client[0],
+        requests=60
+    )
+
+    if not allowed:
+        raise HTTPException(
+            429,
+            "Too many requests"
+        )
+```
+
+---
+
+# Realistic Performance Goals
+
+Flaxon aims to make Python a strong choice for many production workloads, including:
+
+* APIs
+* Social platforms
+* Chat applications
+* Dashboards
+* Mobile backends
+* Internal enterprise systems
+
+For extremely high-performance components, applications can combine Flaxon with:
+
+* Background workers
+* Message queues
+* Optimized databases
+* Specialized services
+* Other programming languages when required
+
+The goal is not to replace every technology, but to provide a flexible foundation for building scalable applications with Python.
+

@@ -1,186 +1,436 @@
-
----
-
-## docs/guides/authorization.md
-
-```markdown
 # Authorization
 
 ## Overview
 
-Flaxon provides role-based and permission-based authorization through decorators and utility functions.
+Flaxon provides flexible authorization through roles, permissions, decorators, and utility classes. Authorization is separate from authentication, allowing you to choose the strategy that best fits your application.
 
-## Roles
+Authentication answers **who the user is**.
 
-### Defining Roles
+Authorization answers **what the user is allowed to do**.
+
+---
+
+# Role-Based Authorization
+
+Roles group related permissions together.
+
+## Registering Roles
 
 ```python
-from flaxon.security import Role, register_role
+from flaxon.security import register_role
 
-admin_role = register_role(
+register_role(
     name="admin",
-    permissions=["read", "write", "delete", "manage_users"],
-    description="Administrator with full access",
+    permissions=[
+        "read",
+        "write",
+        "delete",
+        "manage_users",
+    ],
+    description="Administrator",
 )
 
-moderator_role = register_role(
+register_role(
     name="moderator",
-    permissions=["read", "write", "delete"],
-    description="Moderator with limited access",
+    permissions=[
+        "read",
+        "write",
+        "delete",
+    ],
 )
 
-user_role = register_role(
+register_role(
+    name="user",
+    permissions=[
+        "read",
+    ],
+)
+```
+
+---
+
+## Role Inheritance
+
+Roles may inherit permissions from another role.
+
+```python
+from flaxon.security import register_role
+
+user = register_role(
     name="user",
     permissions=["read"],
-    description="Regular user with read-only access",
-)Role Hierarchy
-python
+)
+
 moderator = register_role(
     name="moderator",
-    permissions=["write", "delete"],
-    parent=user_role,  # Inherits all user permissions
+    permissions=[
+        "write",
+        "delete",
+    ],
+    parent=user,
 )
 
 admin = register_role(
     name="admin",
-    permissions=["manage_users"],
-    parent=moderator,  # Inherits all moderator permissions
+    permissions=[
+        "manage_users",
+    ],
+    parent=moderator,
 )
-Permission-Based Authorization
-python
-from flaxon.security import permission_required, Permission
+```
 
-# Define permissions
-register_permission("read", "Read data")
-register_permission("write", "Write data")
-register_permission("delete", "Delete data")
+The resulting permissions become:
 
-@app.get("/api/users")
+| Role | Permissions |
+|------|-------------|
+| User | read |
+| Moderator | read, write, delete |
+| Admin | read, write, delete, manage_users |
+
+---
+
+# Permission-Based Authorization
+
+Permissions can also be assigned directly.
+
+```python
+from flaxon.security import (
+    register_permission,
+    permission_required,
+)
+
+register_permission(
+    "read",
+    "Read data",
+)
+
+register_permission(
+    "write",
+    "Write data",
+)
+
+register_permission(
+    "delete",
+    "Delete data",
+)
+```
+
+Protect routes with decorators.
+
+```python
+@app.get("/users")
 @permission_required("read")
-async def list_users():
-    return [{"id": 1, "name": "Alice"}]
+async def users():
+    return []
+```
 
-@app.post("/api/users")
+```python
+@app.post("/users")
 @permission_required("write")
-async def create_user():
+async def create():
     return {"created": True}
+```
 
-@app.delete("/api/users/<int:user_id>")
+```python
+@app.delete("/users/<int:user_id>")
 @permission_required("delete")
-async def delete_user(user_id: int):
-    return {"deleted": True}
-Role-Based Authorization
-python
+async def delete(user_id: int):
+    return {"deleted": user_id}
+```
+
+---
+
+# Role Decorator
+
+Require a specific role.
+
+```python
 from flaxon.security import role_required
 
-@app.get("/admin/dashboard")
+@app.get("/admin")
 @role_required("admin")
-async def admin_dashboard():
-    return {"admin": True}
+async def admin():
+    return {
+        "message": "Welcome administrator."
+    }
+```
 
-@app.get("/moderator/reports")
+```python
+@app.get("/moderator")
 @role_required("moderator")
-async def moderator_reports():
-    return {"reports": []}
-Combining Roles and Permissions
-python
+async def moderator():
+    return {
+        "message": "Moderator panel"
+    }
+```
+
+---
+
+# Combining Roles and Permissions
+
+Sometimes both conditions should be met.
+
+```python
 from flaxon.security import authorize
 
-@app.delete("/api/users/<int:user_id>")
-@authorize(permission="delete", role="admin")
+@app.delete("/users/<int:user_id>")
+@authorize(
+    role="admin",
+    permission="delete",
+)
 async def delete_user(user_id: int):
-    return {"deleted": True}
-Permission Checking in Functions
-python
+    return {
+        "deleted": user_id
+    }
+```
+
+---
+
+# Authorization Checker
+
+Permissions can also be checked manually.
+
+```python
 from flaxon.security import AuthorizationChecker
 
-async def get_user_data(request):
-    checker = AuthorizationChecker(getattr(request, "user", None))
+@app.get("/reports")
+async def reports(request):
 
-    if checker.has_permission("read"):
-        return await db.fetch_all("SELECT * FROM users")
+    checker = AuthorizationChecker(
+        getattr(request, "user")
+    )
 
-    raise HTTPException(403, "Insufficient permissions")
-Multiple Permissions
-python
-@app.post("/api/bulk")
-@login_required
-async def bulk_operation(request):
-    user = getattr(request, "user")
-    checker = AuthorizationChecker(user)
+    if not checker.has_permission("read"):
+        raise HTTPException(
+            403,
+            "Permission denied.",
+        )
 
-    # Require any of the specified permissions
-    checker.require_any_permission("write", "admin")
+    return await report_service.list()
+```
 
-    # Or require all permissions
-    checker.require_all_permissions("write", "read")
+---
 
-    return {"success": True}
-Resource-Level Authorization
-python
+# Requiring Multiple Permissions
+
+Require one permission.
+
+```python
+checker.require_any_permission(
+    "write",
+    "delete",
+)
+```
+
+Require every permission.
+
+```python
+checker.require_all_permissions(
+    "read",
+    "write",
+)
+```
+
+---
+
+# Resource Authorization
+
+Applications often need ownership checks.
+
+```python
 @app.get("/users/<int:user_id>")
-async def get_user(request, user_id: int):
+async def profile(request, user_id: int):
+
+    user = getattr(
+        request,
+        "user",
+    )
+
+    if (
+        user.id != user_id
+        and "admin" not in user.roles
+    ):
+        raise HTTPException(
+            403,
+            "Access denied.",
+        )
+
+    return await user_service.find(user_id)
+```
+
+---
+
+# Organization Authorization
+
+Projects with teams or organizations can perform custom checks.
+
+```python
+@app.put("/organizations/<int:org_id>")
+async def update_org(request, org_id: int):
+
     user = getattr(request, "user")
 
-    # Check if user owns the resource or is admin
-    if user.id != user_id and "admin" not in user.roles:
-        raise HTTPException(403, "Cannot access this user")
+    if not organization_service.can_edit(
+        user.id,
+        org_id,
+    ):
+        raise HTTPException(
+            403,
+            "Not allowed.",
+        )
 
-    return await db.fetch_one("SELECT * FROM users WHERE id = $1", user_id)
-Complete Authorization Example
-python
-from flaxon import Flaxon, HTTPException
+    return {
+        "updated": True
+    }
+```
+
+---
+
+# Custom Authorization Decorators
+
+You can create your own decorators.
+
+```python
+from flaxon.security import authorization
+
+@authorization
+async def premium_required(user):
+
+    return user.subscription == "premium"
+
+
+@app.get("/premium")
+@premium_required
+async def premium():
+    return {
+        "premium": True
+    }
+```
+
+---
+
+# Complete Example
+
+```python
+from flaxon import (
+    Flaxon,
+    HTTPException,
+)
+
 from flaxon.security import (
     login_required,
     permission_required,
     role_required,
     authorize,
-    AuthorizationChecker,
-    register_role,
     register_permission,
+    register_role,
 )
 
-app = Flaxon("authz-demo")
+app = Flaxon("authorization-demo")
 
-# Define roles and permissions
-register_permission("read_user", "Read user data")
-register_permission("write_user", "Write user data")
-register_permission("delete_user", "Delete user data")
-register_permission("manage_roles", "Manage roles")
+register_permission(
+    "read_users",
+    "Read users",
+)
 
-register_role("admin", permissions=["read_user", "write_user", "delete_user", "manage_roles"])
-register_role("editor", permissions=["read_user", "write_user"])
-register_role("viewer", permissions=["read_user"])
+register_permission(
+    "write_users",
+    "Write users",
+)
+
+register_permission(
+    "delete_users",
+    "Delete users",
+)
+
+register_permission(
+    "manage_roles",
+    "Manage roles",
+)
+
+register_role(
+    "viewer",
+    permissions=[
+        "read_users",
+    ],
+)
+
+register_role(
+    "editor",
+    permissions=[
+        "read_users",
+        "write_users",
+    ],
+)
+
+register_role(
+    "admin",
+    permissions=[
+        "read_users",
+        "write_users",
+        "delete_users",
+        "manage_roles",
+    ],
+)
 
 @app.get("/users")
-@permission_required("read_user")
-async def list_users():
-    return await db.fetch_all("SELECT * FROM users")
-
-@app.get("/users/<int:user_id>")
-@permission_required("read_user")
-async def get_user(user_id: int):
-    return await db.fetch_one("SELECT * FROM users WHERE id = $1", user_id)
+@login_required
+@permission_required("read_users")
+async def users():
+    return []
 
 @app.post("/users")
-@permission_required("write_user")
-async def create_user(request):
-    data = await request.json()
-    return {"created": True, "user": data}
+@login_required
+@permission_required("write_users")
+async def create():
+    return {
+        "created": True
+    }
 
 @app.put("/users/<int:user_id>")
-@authorize(permission="write_user", role="admin")
-async def update_user(user_id: int, request):
-    data = await request.json()
-    return {"updated": True, "id": user_id}
+@login_required
+@authorize(
+    role="admin",
+    permission="write_users",
+)
+async def update(user_id: int):
+    return {
+        "updated": user_id
+    }
 
 @app.delete("/users/<int:user_id>")
+@login_required
 @role_required("admin")
-async def delete_user(user_id: int):
-    return {"deleted": True, "id": user_id}
+async def delete(user_id: int):
+    return {
+        "deleted": user_id
+    }
+```
 
-@app.post("/users/<int:user_id>/roles")
-@permission_required("manage_roles")
-async def assign_role(user_id: int, request):
-    data = await request.json()
-    return {"assigned": True, "user_id": user_id, "role": data["role"]}
+---
+
+# Best Practices
+
+- Keep authentication and authorization separate.
+- Prefer permissions over hard-coded role checks.
+- Use role inheritance to reduce duplication.
+- Apply the principle of least privilege.
+- Protect every sensitive endpoint.
+- Log authorization failures for auditing.
+- Never trust client-provided roles or permissions.
+- Validate authorization on every request.
+
+---
+
+# Next Steps
+
+Continue with:
+
+- Authentication
+- Security
+- Middleware
+- GraphQL
+- Admin Dashboard
+- Databases
+- Testing
+- Deployment

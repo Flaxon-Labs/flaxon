@@ -1,185 +1,498 @@
-
----
-
-## docs/guides/requests.md
-
-```markdown
 # Requests
 
 ## Overview
 
-The `Request` class provides access to all incoming request data including headers, cookies, query parameters, path parameters, and body content.
+The `Request` object provides access to everything sent by the client, including:
 
-## Accessing the Request
+- HTTP method
+- URL
+- Headers
+- Query parameters
+- Path parameters
+- Cookies
+- Body content
+- Form data
+- Uploaded files
+- Client information
+- Request state
+
+A `Request` instance is automatically injected into route handlers when requested.
+
+---
+
+# Accessing the Request
 
 ```python
-from flaxon import Request
+from flaxon import Flaxon, Request
+
+app = Flaxon("my-app")
 
 @app.get("/")
 async def home(request: Request):
-    return {"method": request.method, "path": request.path}
+    return {
+        "method": request.method,
+        "path": request.path,
+    }
+```
 
+---
 
-Request Properties
-python
+# Request Properties
+
+```python
 @app.get("/info")
 async def info(request: Request):
     return {
         "method": request.method,
         "path": request.path,
+        "url": request.url,
         "scheme": request.scheme,
         "host": request.host,
-        "url": request.url,
         "client": request.client,
+        "http_version": request.http_version,
     }
-Headers
-python
+```
+
+Common properties:
+
+| Property | Description |
+|----------|-------------|
+| `method` | HTTP method |
+| `path` | Request path |
+| `url` | Full URL |
+| `scheme` | http or https |
+| `host` | Host name |
+| `client` | Client IP address |
+| `headers` | HTTP headers |
+| `cookies` | Cookies |
+| `query` | Query parameters |
+| `state` | Request-local storage |
+
+---
+
+# HTTP Headers
+
+Read individual headers:
+
+```python
 @app.get("/headers")
-async def get_headers(request: Request):
+async def headers(request: Request):
+
     return {
         "user_agent": request.headers.get("user-agent"),
+        "accept": request.headers.get("accept"),
         "content_type": request.headers.get("content-type"),
-        "all_headers": dict(request.headers),
     }
-Query Parameters
-python
+```
+
+Return every header:
+
+```python
+@app.get("/all-headers")
+async def headers(request: Request):
+
+    return dict(request.headers)
+```
+
+Check for a header:
+
+```python
+if "authorization" in request.headers:
+    ...
+```
+
+---
+
+# Query Parameters
+
+URL:
+
+```
+/search?q=python&page=2&category=books
+```
+
+Access them:
+
+```python
 @app.get("/search")
 async def search(request: Request):
-    # Single value
-    q = request.query.get("q")
-    page = request.query.get("page", 1)
 
-    # Multiple values
-    filters = request.query.get_list("filter")
+    query = request.query.get("q")
 
-    # Type conversion
-    page_int = request.query.get_int("page", 1)
-    active = request.query.get_bool("active", False)
+    page = request.query.get_int(
+        "page",
+        1,
+    )
+
+    category = request.query.get(
+        "category"
+    )
 
     return {
-        "query": q,
+        "query": query,
         "page": page,
-        "filters": filters,
+        "category": category,
     }
-Cookies
-python
+```
+
+---
+
+# Typed Query Helpers
+
+```python
+page = request.query.get_int("page", 1)
+
+price = request.query.get_float("price")
+
+active = request.query.get_bool("active")
+
+tags = request.query.get_list("tag")
+```
+
+Available helpers:
+
+- `get()`
+- `get_int()`
+- `get_float()`
+- `get_bool()`
+- `get_list()`
+
+---
+
+# Path Parameters
+
+```python
+@app.get("/users/<int:user_id>")
+async def user(user_id: int):
+
+    return {
+        "user_id": user_id
+    }
+```
+
+Multiple parameters:
+
+```python
+@app.get("/users/<int:user_id>/posts/<int:post_id>")
+async def post(
+    user_id: int,
+    post_id: int,
+):
+
+    return {
+        "user": user_id,
+        "post": post_id,
+    }
+```
+
+---
+
+# Cookies
+
+Read cookies:
+
+```python
 @app.get("/profile")
 async def profile(request: Request):
-    session_id = request.cookies.get("session_id")
-    theme = request.cookies.get("theme", "light")
+
+    session = request.cookies.get(
+        "session_id"
+    )
+
+    theme = request.cookies.get(
+        "theme",
+        "light",
+    )
 
     return {
-        "session_id": session_id,
+        "session": session,
         "theme": theme,
     }
-Reading the Body
-JSON Body
-python
+```
+
+---
+
+# Reading JSON
+
+```python
 @app.post("/users")
 async def create_user(request: Request):
+
     data = await request.json()
-    return {"received": data}
-Text Body
-python
+
+    return data
+```
+
+---
+
+# Reading Plain Text
+
+```python
 @app.post("/text")
-async def handle_text(request: Request):
-    text = await request.text()
-    return {"length": len(text)}
-Raw Bytes
-python
+async def text(request: Request):
+
+    body = await request.text()
+
+    return {
+        "length": len(body)
+    }
+```
+
+---
+
+# Reading Raw Bytes
+
+```python
 @app.post("/binary")
-async def handle_binary(request: Request):
+async def binary(request: Request):
+
     data = await request.body()
-    return {"size": len(data)}
-Form Data
-python
-@app.post("/form")
-async def handle_form(request: Request):
+
+    return {
+        "bytes": len(data)
+    }
+```
+
+---
+
+# Form Data
+
+```python
+@app.post("/contact")
+async def contact(request: Request):
+
     form = await request.form()
-    return {"name": form.get("name"), "email": form.get("email")}
-Validation with Schemas
-python
+
+    return {
+        "name": form.get("name"),
+        "email": form.get("email"),
+    }
+```
+
+---
+
+# File Uploads
+
+```python
+@app.post("/upload")
+async def upload(request: Request):
+
+    form = await request.form()
+
+    file = form["file"]
+
+    return {
+        "filename": file.filename,
+        "content_type": file.content_type,
+    }
+```
+
+---
+
+# Automatic Validation
+
+Schemas automatically validate incoming data.
+
+```python
 from flaxon.validation import Schema, fields
 
 class CreateUser(Schema):
-    name = fields.String(required=True, min_length=2)
-    email = fields.Email(required=True)
-    age = fields.Integer(required=False, minimum=13)
 
+    name = fields.String(
+        required=True,
+        min_length=2,
+    )
+
+    email = fields.Email(
+        required=True,
+    )
+
+    age = fields.Integer(
+        minimum=13,
+    )
+```
+
+Use the schema:
+
+```python
 @app.post("/users")
 async def create_user(data: CreateUser):
-    # data is automatically validated
-    return {"user": data.to_dict()}
-Path Parameters
-python
-@app.get("/users/<int:user_id>/posts/<int:post_id>")
-async def get_post(user_id: int, post_id: int):
-    # Path parameters are injected automatically
-    return {"user_id": user_id, "post_id": post_id}
-Combining Parameters
-python
-from flaxon.validation import Schema, fields
 
-class SearchParams(Schema):
-    q = fields.String(required=True, min_length=1)
-    page = fields.Integer(default=1, minimum=1)
-    per_page = fields.Integer(default=20, minimum=1, maximum=100)
+    return data.to_dict()
+```
 
-@app.get("/api/search")
-async def search(request: Request, params: SearchParams):
-    # Query parameters are validated
+---
+
+# Combining Request and Validation
+
+```python
+@app.post("/users")
+async def create_user(
+    request: Request,
+    data: CreateUser,
+):
+
     return {
-        "query": params.q,
-        "page": params.page,
-        "per_page": params.per_page,
+        "ip": request.client,
+        "user": data.to_dict(),
     }
-Request Context
-python
-from flaxon.application.context import request_context, get_current_request
+```
 
-@app.get("/context")
-async def context_demo(request: Request):
-    with request_context(request):
-        # Store data in context
-        from flaxon.application.context import get_request_context
-        ctx = get_request_context()
-        ctx.set("user_id", 123)
+---
 
-        # Retrieve current request
-        current = get_current_request()
-        return {"request_id": id(current)}
-Full Example
-python
+# Request State
+
+Store data during request processing.
+
+```python
+@app.get("/")
+async def home(request: Request):
+
+    request.state.user_id = 15
+
+    return {
+        "user": request.state.user_id
+    }
+```
+
+Middleware:
+
+```python
+request.state.start_time = time.time()
+```
+
+Route:
+
+```python
+elapsed = time.time() - request.state.start_time
+```
+
+---
+
+# Client Information
+
+```python
+@app.get("/client")
+async def client(request: Request):
+
+    return {
+        "ip": request.client,
+        "user_agent": request.headers.get("user-agent"),
+    }
+```
+
+---
+
+# Authentication Information
+
+When authentication middleware is enabled:
+
+```python
+@app.get("/profile")
+async def profile(request: Request):
+
+    user = request.user
+
+    return user.to_dict()
+```
+
+---
+
+# Request Context
+
+Access the current request anywhere in your application.
+
+```python
+from flaxon.application.context import get_current_request
+
+request = get_current_request()
+```
+
+Example:
+
+```python
+def current_ip():
+
+    request = get_current_request()
+
+    return request.client
+```
+
+---
+
+# Reading Large Bodies
+
+For very large uploads use streaming.
+
+```python
+@app.post("/upload")
+async def upload(request: Request):
+
+    async for chunk in request.stream():
+
+        process(chunk)
+
+    return {
+        "uploaded": True
+    }
+```
+
+Streaming avoids loading the entire request into memory.
+
+---
+
+# Complete Example
+
+```python
 from flaxon import Flaxon, Request
 from flaxon.validation import Schema, fields
 
-app = Flaxon("requests-demo")
+app = Flaxon("request-demo")
 
 class CreateUser(Schema):
-    name = fields.String(required=True, min_length=2)
+
+    username = fields.String(required=True)
+
     email = fields.Email(required=True)
 
 @app.get("/users/<int:user_id>")
-async def get_user(user_id: int, request: Request):
-    # Headers
-    auth = request.headers.get("authorization")
-
-    # Query parameters
-    include_posts = request.query.get_bool("include_posts", False)
+async def get_user(
+    user_id: int,
+    request: Request,
+):
 
     return {
         "user_id": user_id,
-        "authenticated": bool(auth),
-        "include_posts": include_posts,
+        "include_posts": request.query.get_bool(
+            "posts",
+            False,
+        ),
+        "client": request.client,
     }
 
 @app.post("/users")
-async def create_user(request: Request, data: CreateUser):
-    # Body is automatically validated
-    session_id = request.cookies.get("session_id")
+async def create_user(
+    request: Request,
+    data: CreateUser,
+):
 
     return {
         "success": True,
         "user": data.to_dict(),
-        "session_id": session_id,
+        "session": request.cookies.get("session_id"),
     }
+```
+
+---
+
+# Best Practices
+
+- Use schema validation whenever possible.
+- Use typed query helpers instead of manual conversion.
+- Keep request handlers lightweight.
+- Avoid reading the body multiple times.
+- Use streaming for large uploads.
+- Store request-specific data in `request.state`.
+- Never trust client input without validation.
+- Use HTTPS in production.
+- Protect sensitive endpoints with authentication and authorization.

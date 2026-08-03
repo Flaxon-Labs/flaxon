@@ -1,90 +1,331 @@
-
----
-
-## docs/architecture.md
-
-```markdown
 # Architecture
 
 ## Overview
 
-Flaxon is an ASGI application that sits between clients and application services. The core handles protocol dispatch, routing, request/response objects, middleware, validation, errors, lifecycle events, and extension registration. Business logic remains in the developer's application services rather than in controllers or templates.
+Flaxon is an **ASGI-first Python web framework** that sits between clients and your application services.
 
-## Layered Architecture
+The framework is responsible for:
 
-┌─────────────────────────────────────────────┐
-│ Client Layer │
-│ Web, Android, iOS, CLI, Third-party │
-├─────────────────────────────────────────────┤
-│ Flaxon Framework Layer │
-│ Protocol → Routing → Middleware → Handler │
-├─────────────────────────────────────────────┤
-│ Application Layer │
-│ Controllers, Services, Schemas, Events │
-├─────────────────────────────────────────────┤
-│ Infrastructure Layer │
-│ Database, Cache, Queue, Storage, Email │
-└─────────────────────────────────────────────┘
+- Protocol dispatch
+- Routing
+- Request and response handling
+- Middleware execution
+- Request validation
+- Exception handling
+- Application lifecycle events
+- Extension and plugin registration
 
-text
+Business logic belongs in your application's services, models, and domain layer—not inside the framework.
 
-## ASGI Application
+---
 
-Flaxon implements the ASGI 3.0 specification, handling:
+# Layered Architecture
 
-- **HTTP** — Requests and responses
-- **WebSocket** — Connections and messages
+```text
+┌──────────────────────────────────────────────────────┐
+│                  Client Layer                         │
+│  Web • Mobile • CLI • Desktop • Third-Party APIs     │
+└──────────────────────────────┬───────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────┐
+│                Flaxon Framework                      │
+│  Protocol → Routing → Middleware → Endpoint          │
+└──────────────────────────────┬───────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────┐
+│               Application Layer                      │
+│  Routes • Services • Schemas • Events • Business     │
+└──────────────────────────────┬───────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────┐
+│             Infrastructure Layer                     │
+│ Database • Cache • Storage • Queue • Email • Redis   │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+# ASGI Application
+
+Flaxon fully implements the **ASGI 3.0 specification**.
+
+Supported protocols include:
+
+- **HTTP** — Request and response handling
+- **WebSocket** — Real-time communication
 - **Lifespan** — Startup and shutdown events
+
+Example:
 
 ```python
 async def __call__(self, scope, receive, send):
     if scope["type"] == "http":
         await self._handle_http(scope, receive, send)
+
     elif scope["type"] == "websocket":
         await self._handle_websocket(scope, receive, send)
+
     elif scope["type"] == "lifespan":
         await self._handle_lifespan(receive, send)
-Request Lifecycle
-ASGI server creates a scope and forwards protocol messages
+```
 
-Middleware adds cross-cutting behavior (CORS, request ID, security headers)
+---
 
-Router matches path and method, converts parameters
+# Request Lifecycle
 
-Invoker resolves Request object, path parameters, and Schema annotations
+Every incoming request follows the same processing pipeline.
 
-Endpoint performs application logic and returns a response-compatible value
+```text
+        Client
+           │
+           ▼
+    ASGI Server
+           │
+           ▼
+      Flaxon App
+           │
+           ▼
+      Middleware
+           │
+           ▼
+        Router
+           │
+           ▼
+ Parameter Resolution
+           │
+           ▼
+ Validation (Schemas)
+           │
+           ▼
+ Endpoint Function
+           │
+           ▼
+ Response Conversion
+           │
+           ▼
+ Exception Handling
+           │
+           ▼
+      ASGI Response
+```
 
-Flaxon converts dictionaries/lists to JSON and sends ASGI response messages
+Processing steps:
 
-Exceptions are mapped to safe HTTP errors or debug information
+1. The ASGI server creates a request scope.
+2. Flaxon receives the request.
+3. Middleware executes.
+4. The router matches the path and HTTP method.
+5. Path parameters are converted.
+6. Request data is validated.
+7. The endpoint function executes.
+8. Python objects are converted into HTTP responses.
+9. Exceptions are translated into appropriate HTTP responses.
+10. The ASGI server sends the response back to the client.
 
-Components
-Application
-The Flaxon class is the central registry and ASGI entry point. It owns configuration, routes, middleware definitions, lifecycle callbacks, application state, Jinax configuration, WebSocket room management, and the debugger.
+---
 
-Router
-The router handles route registration, matching, and URL generation. It supports Flask-style and brace-style parameters.
+# Core Components
 
-Request and Response
-The Request object exposes method, path, URL, headers, cookies, query values, path parameters, and async body methods. Responses are automatically converted from Python objects.
+## Application
 
-Middleware
-Middleware wraps the ASGI application and handles cross-cutting concerns. The stack is built lazily and executed in order.
+The `Flaxon` class is the heart of the framework.
 
-Validation
-Declarative schemas validate request data and inject validated objects into route handlers.
+It manages:
 
-WebSocket
-WebSocket connections are managed with room-based broadcasting and a replaceable manager.
+- Configuration
+- Routes
+- Middleware
+- Application state
+- Lifecycle events
+- Jinax integration
+- WebSocket rooms
+- Debugger
+- Extensions and plugins
 
-Jinax
-Optional Jinja2 integration for server-side HTML rendering.
+---
 
-Dependency Direction
-text
-Client → HTTP/WebSocket → Flaxon transport → Application services → Repositories/Infrastructure
-Business services should avoid direct dependence on Request where practical so they can be reused by HTTP routes, WebSocket handlers, jobs, and tests.
+## Router
 
-Concurrency Model
-Flaxon uses Python's asyncio for non-blocking I/O. Async endpoints must avoid blocking calls. A synchronous database driver or long CPU task can block the event loop even when the route is declared with async def.
+The router is responsible for:
+
+- Route registration
+- URL matching
+- URL generation
+- HTTP method dispatch
+- Path parameter conversion
+
+Supported parameter styles include:
+
+```python
+/users/<int:id>
+
+/users/{id}
+```
+
+---
+
+## Request
+
+The `Request` object provides convenient access to:
+
+- HTTP method
+- URL
+- Path
+- Headers
+- Cookies
+- Query parameters
+- Path parameters
+- Request body
+- Uploaded files
+
+Body methods are asynchronous for maximum performance.
+
+---
+
+## Response
+
+Flaxon automatically converts common Python objects into HTTP responses.
+
+Supported return values include:
+
+- `dict`
+- `list`
+- `str`
+- `bytes`
+- `Response`
+- Streaming responses
+- File responses
+
+---
+
+## Middleware
+
+Middleware wraps the application and executes in order.
+
+Typical middleware includes:
+
+- CORS
+- Security headers
+- Authentication
+- Rate limiting
+- Request IDs
+- Logging
+- Compression
+
+---
+
+## Validation
+
+Flaxon uses declarative schemas for request validation.
+
+Validation automatically:
+
+- Parses incoming data
+- Converts types
+- Validates values
+- Returns HTTP 422 responses when validation fails
+- Injects validated objects into route handlers
+
+---
+
+## WebSockets
+
+Flaxon includes first-class WebSocket support.
+
+Features include:
+
+- Room management
+- Broadcasting
+- Connection lifecycle
+- JSON messaging
+- Custom managers
+
+---
+
+## Jinax
+
+Jinax is Flaxon's optional server-side template engine.
+
+It provides:
+
+- HTML rendering
+- Template inheritance
+- Auto reload
+- Jinja2 compatibility
+
+---
+
+# Dependency Direction
+
+```text
+Client
+      │
+      ▼
+HTTP / WebSocket
+      │
+      ▼
+Flaxon Framework
+      │
+      ▼
+Application Services
+      │
+      ▼
+Repositories
+      │
+      ▼
+Infrastructure
+```
+
+Business services should avoid depending directly on `Request` objects whenever possible.
+
+Keeping services framework-independent makes them reusable from:
+
+- HTTP endpoints
+- WebSocket handlers
+- Scheduled jobs
+- CLI commands
+- Background workers
+- Unit tests
+
+---
+
+# Concurrency Model
+
+Flaxon is built on Python's **asyncio** event loop.
+
+All request handling is asynchronous and optimized for high-concurrency I/O workloads.
+
+## Best Practices
+
+✔ Use asynchronous database drivers.
+
+✔ Await all I/O operations.
+
+✔ Prefer async HTTP clients.
+
+✔ Keep endpoints non-blocking.
+
+Avoid:
+
+- Long CPU-intensive operations
+- Blocking file operations
+- Synchronous database drivers
+- Blocking network requests
+
+For CPU-intensive work, use background workers, task queues, or process pools to keep the event loop responsive.
+
+---
+
+# Architecture Principles
+
+Flaxon is designed around a few core principles:
+
+- **Async-first** — Built for modern asynchronous applications.
+- **Technology-neutral** — Use any database, frontend, ORM, or client.
+- **Minimal magic** — Explicit APIs that are easy to understand.
+- **Scalable structure** — Start with a single file and grow into large applications.
+- **Composable** — Add middleware, plugins, and extensions only when needed.
+- **Developer-friendly** — Helpful debugging, validation, and tooling out of the box.

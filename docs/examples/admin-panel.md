@@ -1,3 +1,4 @@
+
 # Admin Panel Example
 
 This example demonstrates a complete Flaxon admin panel with a Product model using in-memory storage.
@@ -7,23 +8,34 @@ This example demonstrates a complete Flaxon admin panel with a Product model usi
 ```bash
 # Create a new Flaxon project
 flaxon new admin-example
+
 cd admin-example
 
 # Install dependencies
 pip install flaxon
 
 # Create app.py with the code below
-# Run the app
+
+# Run the application
 flaxon run app:app --reload
+````
 
+---
 
-Full Example Code
-app.py
-python
+# Full Example Code
+
+## app.py
+
+```python
 from flaxon import Flaxon
 from flaxon.admin import AdminDashboard, AdminConfig, admin_model
 
-app = Flaxon("admin-example", debug=True)
+
+app = Flaxon(
+    "admin-example",
+    debug=True,
+)
+
 
 # Admin configuration
 config = AdminConfig(
@@ -32,141 +44,396 @@ config = AdminConfig(
     index_title="Welcome to Product Admin",
 )
 
-# Create admin dashboard
-admin = AdminDashboard(app, config=config, url_prefix="/admin")
 
-# Define Product model with CRUD hooks
+# Create admin dashboard
+admin = AdminDashboard(
+    app,
+    config=config,
+    url_prefix="/admin",
+)
+
+
+# Define Product model
 @admin_model
 class Product:
+
     __name__ = "product"
     __verbose_name__ = "Product"
     __verbose_name_plural__ = "Products"
+
 
     # In-memory storage
     _data = {}
     _id_counter = 1
 
+
     @classmethod
     async def get_instances(cls) -> list[dict]:
-        """Return all products for the list view."""
+        """
+        Return all products.
+        """
         return list(cls._data.values())
 
+
     @classmethod
-    async def get_instance(cls, id: str) -> dict | None:
-        """Return a single product for detail/edit views."""
+    async def get_instance(
+        cls,
+        id: str
+    ) -> dict | None:
+        """
+        Return a single product.
+        """
         return cls._data.get(id)
 
+
     @classmethod
-    async def create_instance(cls, data: dict) -> dict:
-        """Create a new product from form data."""
+    async def create_instance(
+        cls,
+        data: dict
+    ) -> dict:
+        """
+        Create a new product.
+        """
+
         product_id = str(cls._id_counter)
+
         cls._id_counter += 1
+
         data["id"] = product_id
+
         cls._data[product_id] = data
+
         return data
 
-    @classmethod
-    async def update_instance(cls, id: str, data: dict) -> dict | None:
-        """Update an existing product."""
-        if id not in cls._data:
-            return None
-        cls._data[id].update(data)
-        return cls._data[id]
 
     @classmethod
-    async def delete_instance(cls, id: str) -> bool:
-        """Delete a product."""
+    async def update_instance(
+        cls,
+        id: str,
+        data: dict
+    ) -> dict | None:
+        """
+        Update a product.
+        """
+
+        if id not in cls._data:
+            return None
+
+        cls._data[id].update(data)
+
+        return cls._data[id]
+
+
+    @classmethod
+    async def delete_instance(
+        cls,
+        id: str
+    ) -> bool:
+        """
+        Delete a product.
+        """
+
         if id in cls._data:
             del cls._data[id]
             return True
+
         return False
 
-# Register Product with custom admin options
+
+
+# Register model in admin panel
+
 admin.register(
     Product,
-    list_display=["id", "name", "price", "status", "created_at"],
-    list_filter=["status"],
-    search_fields=["name", "description"],
-    fields=["name", "description", "price", "status", "created_at"],
-    readonly_fields=["id", "created_at"],
-    ordering=["-created_at"],
+
+    list_display=[
+        "id",
+        "name",
+        "price",
+        "status",
+        "created_at",
+    ],
+
+    list_filter=[
+        "status",
+    ],
+
+    search_fields=[
+        "name",
+        "description",
+    ],
+
+    fields=[
+        "name",
+        "description",
+        "price",
+        "status",
+        "created_at",
+    ],
+
+    readonly_fields=[
+        "id",
+        "created_at",
+    ],
+
+    ordering=[
+        "-created_at",
+    ],
 )
 
-# Seed some initial data
-import asyncio
+
+
+# Seed initial data
 
 async def seed_data():
-    products = [
-        {"name": "Laptop", "description": "High-performance laptop", "price": 999.99, "status": "active", "created_at": "2026-01-15"},
-        {"name": "Mouse", "description": "Wireless mouse", "price": 29.99, "status": "active", "created_at": "2026-01-20"},
-        {"name": "Keyboard", "description": "Mechanical keyboard", "price": 79.99, "status": "draft", "created_at": "2026-01-25"},
-    ]
-    for p in products:
-        await Product.create_instance(p)
 
-asyncio.run(seed_data())
+    products = [
+
+        {
+            "name": "Laptop",
+            "description": "High-performance laptop",
+            "price": 999.99,
+            "status": "active",
+            "created_at": "2026-01-15",
+        },
+
+        {
+            "name": "Mouse",
+            "description": "Wireless mouse",
+            "price": 29.99,
+            "status": "active",
+            "created_at": "2026-01-20",
+        },
+
+        {
+            "name": "Keyboard",
+            "description": "Mechanical keyboard",
+            "price": 79.99,
+            "status": "draft",
+            "created_at": "2026-01-25",
+        },
+
+    ]
+
+
+    for product in products:
+        await Product.create_instance(product)
+
+
 
 # Welcome route
+
 @app.get("/")
 async def home(request):
+
     return {
+
         "message": "Welcome to the Admin Panel Example!",
+
         "admin_url": "/admin",
+
         "products_count": len(Product._data),
+
     }
 
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8000, reload=True)
 
+    import asyncio
 
-What You'll See
-Admin Dashboard
-Visit /admin to see the dashboard with registered models and statistics.
+    asyncio.run(seed_data())
 
-Product List
-Visit /admin/product to see all products with search and filter capabilities.
+    app.run(
+        host="127.0.0.1",
+        port=8000,
+        reload=True,
+    )
+```
 
-Product Detail
-Click any product to view its details.
+---
 
-Create Product
-Use the "Add Product" button to create new products.
+# What You'll See
 
-Edit Product
-Click the edit icon on any product to modify it.
+## Admin Dashboard
 
-Delete Product
-Use the delete button to remove products (with confirmation).
+Visit:
 
-Customizing the Admin
-Adding a Custom Action
-python
+```
+/admin
+```
+
+Displays:
+
+* Registered models
+* Statistics
+* Admin navigation
+
+---
+
+## Product List
+
+Visit:
+
+```
+/admin/product
+```
+
+Features:
+
+* Search products
+* Filter by status
+* Sorting
+* Pagination
+
+---
+
+## Product Detail
+
+Click a product to view:
+
+* Product information
+* Metadata
+* Available actions
+
+---
+
+## Create Product
+
+Use:
+
+```
+Add Product
+```
+
+to create new products.
+
+---
+
+## Edit Product
+
+Click the edit button to update existing products.
+
+---
+
+## Delete Product
+
+Delete products with confirmation protection.
+
+---
+
+# Customizing the Admin
+
+## Adding a Custom Action
+
+```python
 from flaxon.admin import admin_action
 
+
 @admin_action("mark_inactive")
-async def mark_inactive(self, ids: list[str]) -> dict:
+async def mark_inactive(
+    self,
+    ids: list[str]
+) -> dict:
+
+    updated = 0
+
     for id in ids:
+
         if id in self._data:
+
             self._data[id]["status"] = "inactive"
-    return {"success": True, "updated": len(ids)}
-Adding a Custom Display Field
-python
+
+            updated += 1
+
+
+    return {
+
+        "success": True,
+
+        "updated": updated,
+
+    }
+```
+
+---
+
+# Adding a Custom Display Field
+
+```python
 from flaxon.admin import admin_display
 
-@admin_display(header="Price with Tax")
-def display_price_with_tax(self, obj: dict) -> str:
-    price = obj.get("price", 0)
+
+@admin_display(
+    header="Price with Tax"
+)
+def display_price_with_tax(
+    self,
+    obj: dict
+) -> str:
+
+    price = obj.get(
+        "price",
+        0
+    )
+
     tax = price * 0.15
+
     return f"${price + tax:.2f}"
+```
+
+---
+
+# Database Integration
+
+The admin panel can be connected to:
+
+* SQLite
+* PostgreSQL
+* MySQL
+* Custom database adapters
+
+Example:
+
+```python
+admin.register(
+    Product,
+    database="default",
+)
+```
+
+---
+
+# Authentication
+
+Protect the admin dashboard:
+
+```python
+from flaxon.security import login_required
 
 
-Next Steps
-Add authentication to protect the admin
+@app.middleware
+async def admin_auth(request, call_next):
 
-Connect to a real database (SQLite, PostgreSQL)
+    if request.path.startswith("/admin"):
 
-Create custom admin views
+        if not request.user:
 
-Add custom CSS and JavaScript
+            return {
+                "error": "Authentication required"
+            }
 
-Deploy to production
+    return await call_next(request)
+```
+
+---
+
+# Next Steps
+
+* Add authentication
+* Connect a real database
+* Create custom admin pages
+* Add custom themes
+* Add dashboard widgets
+* Deploy to production
+

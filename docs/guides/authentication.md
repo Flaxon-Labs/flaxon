@@ -1,132 +1,363 @@
 
----
-
-## docs/guides/authentication.md
-
-```markdown
 # Authentication
 
 ## Overview
 
-Flaxon provides flexible authentication through backends including JWT, sessions, and custom implementations.
+Flaxon provides flexible authentication support through pluggable authentication backends.
 
-## JWT Authentication
+Supported approaches include:
 
-### Setup
+- JWT authentication
+- Session-based authentication
+- API key authentication
+- OAuth2 providers
+- Custom authentication implementations
+
+Flaxon does not force a single authentication strategy. Developers can choose the approach that best fits their application.
+
+---
+
+# JWT Authentication
+
+JWT (JSON Web Token) authentication is commonly used for APIs, mobile applications, and distributed systems.
+
+---
+
+## Setup
 
 ```python
 from flaxon import Flaxon
-from flaxon.security import JWTBackend, AuthenticationMiddleware, login_required
+from flaxon.security import (
+    JWTBackend,
+    AuthenticationMiddleware,
+    login_required
+)
 
-app = Flaxon("auth-app")
-backend = JWTBackend(secret_key="your-secret-key")
 
-app.add_middleware(AuthenticationMiddleware, backend=backend)
+app = Flaxon(
+    "auth-app"
+)
 
-Login
-python
+
+backend = JWTBackend(
+    secret_key="your-secret-key"
+)
+
+
+app.add_middleware(
+    AuthenticationMiddleware,
+    backend=backend
+)
+````
+
+---
+
+# Login
+
+Create a login endpoint that validates credentials and returns a token.
+
+```python
 from flaxon.security import User
+
 
 @app.post("/login")
 async def login(request):
+
     data = await request.json()
-    user = await authenticate_user(data["username"], data["password"])
+
+
+    user = await authenticate_user(
+        data["username"],
+        data["password"]
+    )
+
 
     if not user:
-        raise HTTPException(401, "Invalid credentials")
+        raise HTTPException(
+            401,
+            "Invalid credentials"
+        )
 
-    token = await backend.create_token(user)
-    return {"token": token, "user": user.to_dict()}
-Protecting Routes
-python
+
+    token = await backend.create_token(
+        user
+    )
+
+
+    return {
+        "token": token,
+        "user": user.to_dict()
+    }
+```
+
+---
+
+# Protecting Routes
+
+Use `login_required` to protect authenticated endpoints.
+
+```python
 @app.get("/profile")
 @login_required
 async def profile(request):
-    user = getattr(request, "user")
-    return {"user": user.to_dict()}
-Custom User Model
-python
+
+    user = getattr(
+        request,
+        "user"
+    )
+
+
+    return {
+        "user": user.to_dict()
+    }
+```
+
+---
+
+# Custom User Model
+
+Applications can extend the default user model with custom fields and permissions.
+
+```python
 from flaxon.security import User
 
+
 class CustomUser(User):
-    def __init__(self, id, username, email, roles=None):
-        super().__init__(id, username, email, roles)
-        self.permissions = ["read", "write"]
+
+    def __init__(
+        self,
+        id,
+        username,
+        email,
+        roles=None
+    ):
+
+        super().__init__(
+            id,
+            username,
+            email,
+            roles
+        )
+
+
+        self.permissions = [
+            "read",
+            "write"
+        ]
+
 
     def can_access_admin(self):
+
         return "admin" in self.roles
-Session Authentication
-python
-from flaxon.security import SessionBackend, AuthenticationMiddleware
+```
+
+---
+
+# Session Authentication
+
+Session authentication is useful for traditional web applications.
+
+Example:
+
+```python
+from flaxon.security import (
+    SessionBackend,
+    AuthenticationMiddleware
+)
+
 
 backend = SessionBackend()
-app.add_middleware(AuthenticationMiddleware, backend=backend)
+
+
+app.add_middleware(
+    AuthenticationMiddleware,
+    backend=backend
+)
+
 
 @app.post("/login")
 async def login(request):
-    user = await authenticate_user(data)
-    session_id = await backend.create_token(user)
-    response = JSONResponse({"success": True})
-    response.headers["set-cookie"] = f"session_id={session_id}; HttpOnly; Path=/"
+
+    user = await authenticate_user(
+        data
+    )
+
+
+    session_id = await backend.create_token(
+        user
+    )
+
+
+    response = JSONResponse(
+        {
+            "success": True
+        }
+    )
+
+
+    response.headers["set-cookie"] = (
+        f"session_id={session_id}; "
+        "HttpOnly; Path=/"
+    )
+
+
     return response
-API Key Authentication
-python
-from flaxon.security import APIKeyManager, api_key_required
+```
+
+---
+
+# API Key Authentication
+
+API keys are useful for service-to-service communication and external integrations.
+
+```python
+from flaxon.security import (
+    APIKeyManager,
+    api_key_required
+)
+
 
 manager = APIKeyManager()
 
-# Generate an API key
+
 key, hashed = manager.generate_key()
-manager.register(key)
+
+
+manager.register(
+    key
+)
+
 
 app.state.api_key_manager = manager
+
 
 @app.get("/protected")
 @api_key_required
 async def protected(request):
-    # API key is validated
-    return {"data": "secret"}
-OAuth2
-python
-from flaxon.security import OAuth2Provider, OAuth2Backend
 
-provider = OAuth2Provider(
-    client_id="your-client-id",
-    client_secret="your-client-secret",
-    authorization_endpoint="https://auth.example.com/authorize",
-    token_endpoint="https://auth.example.com/token",
-    redirect_uri="https://your-app.com/callback",
+    return {
+        "data": "secret"
+    }
+```
+
+---
+
+# OAuth2
+
+Flaxon supports OAuth2 integrations through configurable providers.
+
+Example:
+
+```python
+from flaxon.security import (
+    OAuth2Provider,
+    OAuth2Backend
 )
 
+
+provider = OAuth2Provider(
+
+    client_id="your-client-id",
+
+    client_secret="your-client-secret",
+
+    authorization_endpoint=(
+        "https://auth.example.com/authorize"
+    ),
+
+    token_endpoint=(
+        "https://auth.example.com/token"
+    ),
+
+    redirect_uri=(
+        "https://your-app.com/callback"
+    )
+)
+
+
 backend = OAuth2Backend()
-backend.register_provider("example", provider)
+
+
+backend.register_provider(
+    "example",
+    provider
+)
+
 
 @app.get("/auth/login")
 async def auth_login():
-    url = backend.get_authorization_url("example")
+
+    url = backend.get_authorization_url(
+        "example"
+    )
+
     return RedirectResponse(url)
+
 
 @app.get("/auth/callback")
 async def auth_callback(request):
-    code = request.query.get("code")
-    user_data = await backend.authenticate("example", code)
-    return {"user": user_data}
-Password Hashing
-python
-from flaxon.security import hash_password, verify_password
 
-# Hash a password
-hashed = hash_password("my-password")
+    code = request.query.get(
+        "code"
+    )
 
-# Verify a password
-is_valid = verify_password("my-password", hashed)
 
-# Check if rehash is needed
+    user_data = await backend.authenticate(
+        "example",
+        code
+    )
+
+
+    return {
+        "user": user_data
+    }
+```
+
+---
+
+# Password Hashing
+
+Passwords should never be stored as plain text.
+
+Flaxon provides password hashing utilities.
+
+```python
+from flaxon.security import (
+    hash_password,
+    verify_password
+)
+
+
+hashed = hash_password(
+    "my-password"
+)
+
+
+is_valid = verify_password(
+    "my-password",
+    hashed
+)
+
+
 if needs_rehash(hashed):
-    hashed = hash_password("my-password")
-Complete Authentication Example
-python
-from flaxon import Flaxon, HTTPException
+
+    hashed = hash_password(
+        "my-password"
+    )
+```
+
+---
+
+# Complete Authentication Example
+
+Example API with registration, login, and protected routes.
+
+```python
+from flaxon import (
+    Flaxon,
+    HTTPException
+)
+
 from flaxon.security import (
     JWTBackend,
     AuthenticationMiddleware,
@@ -136,58 +367,179 @@ from flaxon.security import (
     verify_password,
 )
 
-app = Flaxon("auth-demo")
-backend = JWTBackend(secret_key="your-secret-key")
 
-app.add_middleware(AuthenticationMiddleware, backend=backend)
+app = Flaxon(
+    "auth-demo"
+)
 
-# Store users (in production, use a database)
+
+backend = JWTBackend(
+    secret_key="your-secret-key"
+)
+
+
+app.add_middleware(
+    AuthenticationMiddleware,
+    backend=backend
+)
+
+
+# Example storage
+# Use a database in production
+
 users = {}
+
 
 @app.post("/register")
 async def register(request):
+
     data = await request.json()
 
+
     if data["username"] in users:
-        raise HTTPException(400, "Username already exists")
+
+        raise HTTPException(
+            400,
+            "Username already exists"
+        )
+
 
     user = User(
+
         id=len(users) + 1,
+
         username=data["username"],
+
         email=data["email"],
-        roles=["user"],
+
+        roles=[
+            "user"
+        ]
     )
+
+
     users[data["username"]] = {
+
         "user": user,
-        "password": hash_password(data["password"]),
+
+        "password": hash_password(
+            data["password"]
+        )
     }
 
-    return {"success": True, "user": user.to_dict()}
+
+    return {
+
+        "success": True,
+
+        "user": user.to_dict()
+
+    }
+
+
 
 @app.post("/login")
 async def login(request):
+
     data = await request.json()
 
-    stored = users.get(data["username"])
+
+    stored = users.get(
+        data["username"]
+    )
+
+
     if not stored:
-        raise HTTPException(401, "Invalid credentials")
 
-    if not verify_password(data["password"], stored["password"]):
-        raise HTTPException(401, "Invalid credentials")
+        raise HTTPException(
+            401,
+            "Invalid credentials"
+        )
 
-    token = await backend.create_token(stored["user"])
-    return {"token": token}
+
+    if not verify_password(
+        data["password"],
+        stored["password"]
+    ):
+
+        raise HTTPException(
+            401,
+            "Invalid credentials"
+        )
+
+
+    token = await backend.create_token(
+        stored["user"]
+    )
+
+
+    return {
+        "token": token
+    }
+
+
 
 @app.get("/profile")
 @login_required
 async def profile(request):
-    user = getattr(request, "user")
-    return {"user": user.to_dict()}
+
+    user = getattr(
+        request,
+        "user"
+    )
+
+
+    return {
+        "user": user.to_dict()
+    }
+
+
 
 @app.get("/admin")
 @login_required
 async def admin(request):
-    user = getattr(request, "user")
+
+    user = getattr(
+        request,
+        "user"
+    )
+
+
     if "admin" not in user.roles:
-        raise HTTPException(403, "Admin access required")
-    return {"admin": True}
+
+        raise HTTPException(
+            403,
+            "Admin access required"
+        )
+
+
+    return {
+        "admin": True
+    }
+```
+
+---
+
+# Security Recommendations
+
+For production applications:
+
+* Store users in a database.
+* Use strong secret keys.
+* Enable HTTPS.
+* Rotate tokens when appropriate.
+* Use short-lived access tokens.
+* Protect sensitive routes with authorization checks.
+* Never store plain-text passwords.
+* Apply rate limiting to login endpoints.
+
+---
+
+# Next Steps
+
+Related documentation:
+
+* Security Guide
+* Middleware
+* Authorization
+* API Development

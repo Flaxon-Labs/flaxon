@@ -1,246 +1,488 @@
 
----
-
-## docs/api/tasks.md
-
-```markdown
 # Tasks API
 
 ## Task
 
 Task definition.
 
-### Constructor
+## Constructor
 
 ```python
-Task(name: str, func: Callable, *, retry_policy: RetryPolicy | None = None, timeout: int | None = None, queue: str = "default", priority: int = 0)
+Task(
+    name: str,
+    func: Callable,
+    *,
+    retry_policy: RetryPolicy | None = None,
+    timeout: int | None = None,
+    queue: str = "default",
+    priority: int = 0
+)
+````
 
-Methods
-run
-python
-async def run(*args: Any, **kwargs: Any) -> Any
+## Methods
+
+### run
+
+```python
+async def run(
+    *args: Any,
+    **kwargs: Any
+) -> Any
+```
+
 Run the task.
 
-cancel
-python
-def cancel() -> None
-Cancel the task.
+---
 
-to_result
-python
-def to_result() -> TaskResult
-Convert to TaskResult.
-
-Properties
-Property	Type	Description
-id	str	Task ID
-name	str	Task name
-status	TaskStatus	Task status
-created_at	datetime	Created timestamp
-started_at	datetime	Started timestamp
-completed_at	datetime	Completed timestamp
-retry_count	int	Retry count
-TaskStatus
-Task status enum.
-
-Value	Description
-PENDING	Task is pending
-RUNNING	Task is running
-COMPLETED	Task completed
-FAILED	Task failed
-RETRY	Task will retry
-CANCELLED	Task cancelled
-TIMEOUT	Task timed out
-TaskQueue
-Task queue.
-
-Constructor```python
-TaskQueue(name: str = "default", max_size: int = 1000)
-
-text
-
-### Methods
-
-#### push
+### cancel
 
 ```python
-async def push(task: Task) -> None
+def cancel() -> None
+```
+
+Cancel the task.
+
+---
+
+### to_result
+
+```python
+def to_result() -> TaskResult
+```
+
+Convert the task into a `TaskResult`.
+
+---
+
+## Properties
+
+| Property     | Type       | Description         |
+| ------------ | ---------- | ------------------- |
+| id           | str        | Task ID             |
+| name         | str        | Task name           |
+| status       | TaskStatus | Task status         |
+| created_at   | datetime   | Created timestamp   |
+| started_at   | datetime   | Started timestamp   |
+| completed_at | datetime   | Completed timestamp |
+| retry_count  | int        | Retry count         |
+
+---
+
+# TaskStatus
+
+Task status enum.
+
+| Value     | Description     |
+| --------- | --------------- |
+| PENDING   | Task is pending |
+| RUNNING   | Task is running |
+| COMPLETED | Task completed  |
+| FAILED    | Task failed     |
+| RETRY     | Task will retry |
+| CANCELLED | Task cancelled  |
+| TIMEOUT   | Task timed out  |
+
+---
+
+# TaskQueue
+
+Task queue.
+
+## Constructor
+
+```python
+TaskQueue(
+    name: str = "default",
+    max_size: int = 1000
+)
+```
+
+## Methods
+
+### push
+
+```python
+async def push(
+    task: Task
+) -> None
+```
+
 Push a task to the queue.
 
-pop
-python
-async def pop(timeout: float | None = None) -> Task | None
+---
+
+### pop
+
+```python
+async def pop(
+    timeout: float | None = None
+) -> Task | None
+```
+
 Pop a task from the queue.
 
-get
-python
-async def get(task_id: str) -> Task | None
+---
+
+### get
+
+```python
+async def get(
+    task_id: str
+) -> Task | None
+```
+
 Get a task by ID.
 
-remove
-python
-async def remove(task_id: str) -> bool
+---
+
+### remove
+
+```python
+async def remove(
+    task_id: str
+) -> bool
+```
+
 Remove a task.
 
-cancel
-python
-async def cancel(task_id: str) -> bool
+---
+
+### cancel
+
+```python
+async def cancel(
+    task_id: str
+) -> bool
+```
+
 Cancel a task.
 
-clear
-python
+---
+
+### clear
+
+```python
 async def clear() -> None
+```
+
 Clear the queue.
 
-size
-python
+---
+
+### size
+
+```python
 async def size() -> int
-Get the queue size.
+```
 
-pending_count
-python
+Get queue size.
+
+---
+
+### pending_count
+
+```python
 async def pending_count() -> int
-Get pending count.
+```
 
-running_count
-python
+Get pending task count.
+
+---
+
+### running_count
+
+```python
 async def running_count() -> int
-Get running count.
+```
 
-completed_count
-python
+Get running task count.
+
+---
+
+### completed_count
+
+```python
 async def completed_count() -> int
-Get completed count.
+```
 
-failed_count
-python
+Get completed task count.
+
+---
+
+### failed_count
+
+```python
 async def failed_count() -> int
-Get failed count.
+```
 
-Worker
+Get failed task count.
+
+---
+
+# Worker
+
 Task worker.
 
-Constructor
-python
-Worker(registry: TaskRegistry, queue: TaskQueue | None = None, concurrency: int = 10, queue_name: str = "default")
-Methods
-start
-python
+## Constructor
+
+```python
+Worker(
+    registry: TaskRegistry,
+    queue: TaskQueue | None = None,
+    concurrency: int = 10,
+    queue_name: str = "default"
+)
+```
+
+## Methods
+
+### start
+
+```python
 async def start() -> None
+```
+
 Start the worker.
 
-stop
-python
+---
+
+### stop
+
+```python
 def stop() -> None
+```
+
 Stop the worker.
 
-shutdown
-python
+---
+
+### shutdown
+
+```python
 def shutdown() -> None
+```
+
 Shutdown the worker.
 
-is_running
-python
-def is_running() -> bool
-Check if running.
+---
 
-Scheduler
+### is_running
+
+```python
+def is_running() -> bool
+```
+
+Check whether the worker is running.
+
+---
+
+# Scheduler
+
 Task scheduler.
 
-Constructor
-python
-Scheduler(queue: TaskQueue)
-Methods
-schedule
-python
-def schedule(task: Task, delay: int | None = None, at: datetime | None = None, interval: int | None = None) -> None
+## Constructor
+
+```python
+Scheduler(
+    queue: TaskQueue
+)
+```
+
+## Methods
+
+### schedule
+
+```python
+def schedule(
+    task: Task,
+    delay: int | None = None,
+    at: datetime | None = None,
+    interval: int | None = None
+) -> None
+```
+
 Schedule a task.
 
-start
-python
+---
+
+### start
+
+```python
 async def start() -> None
+```
+
 Start the scheduler.
 
-stop
-python
+---
+
+### stop
+
+```python
 async def stop() -> None
+```
+
 Stop the scheduler.
 
-RetryPolicy
-Retry policy.
+---
 
-Constructor
-python
-RetryPolicy(max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0, max_delay: float = 60.0, random_jitter: float = 0.1, retry_on: list[type[Exception]] | None = None)
-Methods
-should_retry
-python
-def should_retry(retry_count: int, error: Exception) -> bool
+# RetryPolicy
+
+Task retry configuration.
+
+## Constructor
+
+```python
+RetryPolicy(
+    max_retries: int = 3,
+    delay: float = 1.0,
+    backoff: float = 2.0,
+    max_delay: float = 60.0,
+    random_jitter: float = 0.1,
+    retry_on: list[type[Exception]] | None = None
+)
+```
+
+## Methods
+
+### should_retry
+
+```python
+def should_retry(
+    retry_count: int,
+    error: Exception
+) -> bool
+```
+
 Check if retry should be attempted.
 
-get_delay
-python
-def get_delay(retry_count: int) -> float
-Get the delay before retry.
+---
 
-TaskResult
-Task result.
+### get_delay
 
-Attributes
-Attribute	Type	Description
-id	str	Task ID
-name	str	Task name
-status	TaskStatus	Task status
-result	Any	Task result
-error	str | None	Error message
-retry_count	int	Retry count
-Methods
-is_pending
-python
+```python
+def get_delay(
+    retry_count: int
+) -> float
+```
+
+Get retry delay.
+
+---
+
+# TaskResult
+
+Task execution result.
+
+## Attributes
+
+| Attribute   | Type       | Description   |
+| ----------- | ---------- | ------------- |
+| id          | str        | Task ID       |
+| name        | str        | Task name     |
+| status      | TaskStatus | Task status   |
+| result      | Any        | Task result   |
+| error       | str | None | Error message |
+| retry_count | int        | Retry count   |
+
+---
+
+## Methods
+
+### is_pending
+
+```python
 def is_pending() -> bool
+```
+
 Check if pending.
 
-is_running
-python
+---
+
+### is_running
+
+```python
 def is_running() -> bool
+```
+
 Check if running.
 
-is_completed
-python
+---
+
+### is_completed
+
+```python
 def is_completed() -> bool
+```
+
 Check if completed.
 
-is_failed
-python
+---
+
+### is_failed
+
+```python
 def is_failed() -> bool
+```
+
 Check if failed.
 
-is_retry
-python
-def is_retry() -> bool
-Check if retry.
+---
 
-is_cancelled
-python
+### is_retry
+
+```python
+def is_retry() -> bool
+```
+
+Check if retrying.
+
+---
+
+### is_cancelled
+
+```python
 def is_cancelled() -> bool
+```
+
 Check if cancelled.
 
-is_timeout
-python
+---
+
+### is_timeout
+
+```python
 def is_timeout() -> bool
-Check if timeout.
+```
 
-is_done
-python
+Check if timed out.
+
+---
+
+### is_done
+
+```python
 def is_done() -> bool
-Check if done.
+```
 
-get_duration
-python
+Check if task is finished.
+
+---
+
+### get_duration
+
+```python
 def get_duration() -> float | None
-Get the task duration.
+```
 
-to_dict
-python
+Get task execution duration.
+
+---
+
+### to_dict
+
+```python
 def to_dict() -> dict[str, Any]
-Convert to dictionary.
+```
+
+Convert result to dictionary.
+
