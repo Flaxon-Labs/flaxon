@@ -75,11 +75,29 @@ class OpenAPIGenerator:
         }
 
     def generate_from_app(self, app: Any) -> dict[str, Any]:
+        converter_to_openapi_type = {
+            "int": "integer",
+            "float": "number",
+            "str": "string",
+            "path": "string",
+            "uuid": "string",
+        }
+
         for route in app.router.routes:
-            path = route.path
-            method = "get"
-            operation = OperationBuilder(path, method).build()
-            self.add_path(path, method, operation)
+            openapi_path = route.path
+            for name, converter_name in getattr(route, "parameters", []):
+                openapi_path = openapi_path.replace(f"<{converter_name}:{name}>", f"{{{name}}}")
+                openapi_path = openapi_path.replace(f"<{name}>", f"{{{name}}}")
+
+            for method in route.methods:
+                builder = OperationBuilder(openapi_path, method.lower())
+                for name, converter_name in getattr(route, "parameters", []):
+                    builder = builder.with_path_parameter(
+                        name,
+                        schema_type=converter_to_openapi_type.get(converter_name, "string"),
+                    )
+                operation = builder.build()
+                self.add_path(openapi_path, method, operation)
 
         return self.generate()
 
