@@ -6,7 +6,22 @@ import os
 from pathlib import Path
 from typing import Any
 from .base import Command
-from .commands import DoctorCommand, GenerateCommand, NewCommand, RoutesCommand, RunCommand
+from .commands import (
+    BuildCommand,
+    DocsCommand,
+    DoctorCommand,
+    GenerateCommand,
+    InspectCommand,
+    MigrateCommand,
+    NewCommand,
+    RoutesCommand,
+    RunCommand,
+    ScheduleCommand,
+    ShellCommand,
+    TestCommand,
+    VersionCommand,
+    WorkerCommand,
+)
 
 
 class CommandDiscovery:
@@ -17,6 +32,15 @@ class CommandDiscovery:
             DoctorCommand(),
             NewCommand(),
             GenerateCommand(),
+            DocsCommand(),
+            BuildCommand(),
+            InspectCommand(),
+            MigrateCommand(),
+            ScheduleCommand(),
+            ShellCommand(),
+            TestCommand(),
+            VersionCommand(),
+            WorkerCommand(),
         ]
 
     def discover(self) -> list[Command]:

@@ -89,6 +89,7 @@ class Flaxon:
         # Admin & GraphQL Properties Initialization
         self._admin: AdminDashboard | None = None
         self._graphql_schema: GraphQLSchema | None = None
+        self._openapi_generator: Any = None
         self._asgi_mounts: list[tuple[str, Any]] = []
 
     # ============================================================
@@ -130,7 +131,7 @@ class Flaxon:
         apply to that subtree -- the mounted app handles everything itself.
 
         Example:
-```python
+            ```python
             from fastapi import FastAPI
 
             fastapi_app = FastAPI()
@@ -140,7 +141,7 @@ class Flaxon:
                 return {"hello": "from fastapi"}
 
             app.mount_asgi("/fastapi", fastapi_app)
-```
+            ```
         """
         prefix = path.rstrip("/") if path != "/" else ""
         self._asgi_mounts.append((prefix, app))
@@ -196,6 +197,40 @@ class Flaxon:
     # ============================================================
     # ADMIN METHODS
     # ============================================================
+
+    def enable_openapi(
+        self,
+        title: str = "Flaxon API",
+        version: str = "1.0.0",
+        spec_url: str = "/openapi.json",
+        docs_url: str | None = "/docs",
+        redoc_url: str | None = "/redoc",
+    ) -> Any:
+        """
+        Enable auto-generated OpenAPI docs, derived from your routes, endpoint
+        docstrings, and Schema-typed parameters -- no hand-written descriptions
+        required, though you can still customize the returned generator further.
+        """
+        from flaxon.openapi import OpenAPIGenerator, ReDoc, SwaggerUI
+
+        self._openapi_generator = OpenAPIGenerator(title=title, version=version)
+
+        @self.router.get(spec_url)
+        async def openapi_spec() -> Any:
+            from flaxon.http import JSONResponse
+            return JSONResponse(self._openapi_generator.generate_from_app(self))
+
+        if docs_url:
+            @self.router.get(docs_url)
+            async def swagger_docs() -> Any:
+                return SwaggerUI(openapi_url=spec_url, title=title).render()
+
+        if redoc_url:
+            @self.router.get(redoc_url)
+            async def redoc_docs() -> Any:
+                return ReDoc(openapi_url=spec_url, title=title).render()
+
+        return self._openapi_generator
 
     def enable_admin(
         self,

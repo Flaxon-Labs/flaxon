@@ -119,23 +119,23 @@ class SchemaBuilder:
 
         if field_type == "strfield":
             schema.string()
-            if hasattr(field, "min_length") and field.min_length:
+            if getattr(field, "min_length", None) is not None:
                 schema.min_length(field.min_length)
-            if hasattr(field, "max_length") and field.max_length:
+            if getattr(field, "max_length", None) is not None:
                 schema.max_length(field.max_length)
 
         elif field_type == "intfield":
             schema.integer()
-            if hasattr(field, "minimum") and field.minimum:
+            if getattr(field, "minimum", None) is not None:
                 schema.minimum(field.minimum)
-            if hasattr(field, "maximum") and field.maximum:
+            if getattr(field, "maximum", None) is not None:
                 schema.maximum(field.maximum)
 
         elif field_type == "floatfield":
             schema.number()
-            if hasattr(field, "minimum") and field.minimum:
+            if getattr(field, "minimum", None) is not None:
                 schema.minimum(field.minimum)
-            if hasattr(field, "maximum") and field.maximum:
+            if getattr(field, "maximum", None) is not None:
                 schema.maximum(field.maximum)
 
         elif field_type == "boolfield":

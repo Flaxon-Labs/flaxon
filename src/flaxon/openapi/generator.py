@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import inspect
+import typing
 from typing import Any
 
 from .operation import OperationBuilder
+from .schema import SchemaBuilder
 
 
 class OpenAPIGenerator:
@@ -83,19 +86,59 @@ class OpenAPIGenerator:
             "uuid": "string",
         }
 
+        try:
+            from flaxon.validation import Schema
+        except ImportError:
+            Schema = None
+
         for route in app.router.routes:
             openapi_path = route.path
             for name, converter_name in getattr(route, "parameters", []):
                 openapi_path = openapi_path.replace(f"<{converter_name}:{name}>", f"{{{name}}}")
                 openapi_path = openapi_path.replace(f"<{name}>", f"{{{name}}}")
 
+            endpoint = route.endpoint
+            docstring = inspect.getdoc(endpoint) or ""
+            doc_lines = docstring.splitlines()
+            summary = doc_lines[0].strip() if doc_lines else ""
+            description = "\n".join(line for line in doc_lines[1:] if line.strip()).strip()
+
+            try:
+                hints = typing.get_type_hints(endpoint)
+            except Exception:
+                hints = {}
+
+            request_schema = None
+            if Schema is not None:
+                for hint in hints.values():
+                    if isinstance(hint, type) and issubclass(hint, Schema):
+                        properties = {
+                            field_name: SchemaBuilder.from_field(field)
+                            for field_name, field in hint.__fields__.items()
+                        }
+                        required = [
+                            field_name
+                            for field_name, field in hint.__fields__.items()
+                            if getattr(field, "required", False)
+                        ]
+                        request_schema = SchemaBuilder.object(properties)
+                        if required:
+                            request_schema["required"] = required
+                        break
+
             for method in route.methods:
                 builder = OperationBuilder(openapi_path, method.lower())
+                if summary:
+                    builder = builder.with_summary(summary)
+                if description:
+                    builder = builder.with_description(description)
                 for name, converter_name in getattr(route, "parameters", []):
                     builder = builder.with_path_parameter(
                         name,
                         schema_type=converter_to_openapi_type.get(converter_name, "string"),
                     )
+                if request_schema is not None and method.upper() in ("POST", "PUT", "PATCH"):
+                    builder = builder.with_json_request(request_schema)
                 operation = builder.build()
                 self.add_path(openapi_path, method, operation)
 

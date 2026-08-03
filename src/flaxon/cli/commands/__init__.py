@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .build import BuildCommand
+from .docs import DocsCommand
 from .doctor import DoctorCommand
 from .generate import GenerateCommand
 from .inspect import InspectCommand
@@ -16,6 +17,7 @@ from .worker import WorkerCommand
 
 __all__ = [
     "BuildCommand",
+    "DocsCommand",
     "DoctorCommand",
     "GenerateCommand",
     "InspectCommand",
