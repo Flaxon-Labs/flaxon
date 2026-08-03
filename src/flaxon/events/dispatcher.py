@@ -35,9 +35,8 @@ class EventDispatcher:
         tasks = []
         for listener in listeners:
             try:
-                result = listener.handle(event)
-                if asyncio.iscoroutine(result):
-                    tasks.append(asyncio.create_task(result))
+                if asyncio.iscoroutinefunction(listener.callback):
+                    tasks.append(asyncio.create_task(listener.handle(event)))
                 else:
                     tasks.append(asyncio.create_task(self._run_sync(listener, event)))
             except Exception:

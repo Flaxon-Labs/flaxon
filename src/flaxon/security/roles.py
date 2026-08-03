@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable
 from typing import Any
 
@@ -86,6 +87,7 @@ def register_role(
 
 def role_required(role: str | Role) -> Callable:
     def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             request = None
             for arg in args:

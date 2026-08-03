@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable
 from typing import Any
 
@@ -52,6 +53,7 @@ def register_permission(name: str, description: str | None = None) -> Permission
 
 def permission_required(permission: str | Permission) -> Callable:
     def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             request = None
             for arg in args:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import hmac
 import json
@@ -60,6 +61,7 @@ class JWT:
 
 
 def jwt_required(func: Any) -> Any:
+    @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         request = None
         for arg in args:

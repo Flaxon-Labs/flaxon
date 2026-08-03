@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import functools
 import hashlib
 import secrets
-from typing import Any
 from collections.abc import Callable
+from typing import Any
+
 from flaxon.exceptions import Unauthorized
 from flaxon.http import Request
 
@@ -66,6 +68,7 @@ class APIKeyManager:
 
 def api_key_required(header_name: str = "x-api-key") -> Callable:
     def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             request = None
             for arg in args:
