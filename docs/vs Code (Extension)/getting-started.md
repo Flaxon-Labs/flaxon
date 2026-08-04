@@ -19,20 +19,20 @@ The **Flaxon VS Code Extension** provides full IDE support for **Flaxon**, the a
 1. Open **Visual Studio Code**.
  <p align="center">
   <img src="https://raw.githubusercontent.com/aldanedev-create/Flaxon-Backend-Framework/main/assets/vscode-1.png" alt="flaxon Logo"
-   width="100"/>
+   width="200"/>
 </p>
 
 2. Open the **Extensions** view (`Ctrl+Shift+X` or `Cmd+Shift+X` on macOS).
  <p align="center">
   <img src="https://raw.githubusercontent.com/aldanedev-create/Flaxon-Backend-Framework/main/assets/vscode-2.png" alt="flaxon Logo"
-   width="100"/>
+   width="200"/>
 </p>
 3. Search for **Flaxon**.
 4. Click **Install**.
 
  <p align="center">
   <img src="https://raw.githubusercontent.com/aldanedev-create/Flaxon-Backend-Framework/main/assets/vscode-3.png" alt="flaxon Logo"
-   width="100"/>
+   width="200"/>
 </p>
 
 ## From the Command Line
