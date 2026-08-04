@@ -1,0 +1,87 @@
+{
+  "version": "v1.0.0",
+  "entity": {
+    "type": "individual",
+    "role": "owner",
+    "name": "Flaxon",
+    "email": "aldanehutchinson5@gmail.com",
+    "phone": "8765636141",
+    "description": "Flaxon is a high-performance, async-first Python web framework designed for modern web applications and APIs",
+    "webpageUrl": {
+      "url": "https://flaxon-website.vercel.app/"
+    }
+  },
+  "projects": [
+    {
+      "guid": "flaxon-framework",
+      "name": "Flaxon Framework",
+      "description": "Flaxon is a high-performance, async-first Python web framework designed for modern web applications and APIs",
+      "webpageUrl": {
+        "url": "https://flaxon-website.vercel.app/"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/aldanedev-create/Flaxon-Backend-Framework"
+      },
+      "licenses": [
+        "MIT"
+      ],
+      "tags": [
+        "python",
+        "asgi",
+        "web-framework",
+        "async",
+        "async-first",
+        "backend",
+        "framework",
+        "api"
+      ]
+    },
+    {
+      "guid": "tite-bootstrapper",
+      "name": "Tite",
+      "description": "Tite is a zero-configuration project bootstrapper designed to improve developer experience",
+      "webpageUrl": {
+        "url": "https://tite-public-website.vercel.app/"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/aldanedev-create/TITE"
+      },
+      "licenses": [
+        "MIT"
+      ],
+      "tags": [
+        "cli",
+        "project-initializer",
+        "boilerplate",
+        "automation",
+        "dx",
+        "developer-tools"
+      ]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "mybank",
+        "type": "bank",
+        "address": "219185286828",
+        "description": "Lead Bank business account for Flaxon framework grant payouts via ACH/Wire."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "mybank",
+        "status": "active",
+        "name": "Infra hosting",
+        "description": "Funds the core infrastructure, continuous integration (CI) pipelines, domain hosting, and baseline maintenance of the Flaxon Framework.",
+        "amount": 0,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": [
+          "mybank"
+        ]
+      }
+    ],
+    "history": []
+  }
+}
