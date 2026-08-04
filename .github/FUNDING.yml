@@ -1,0 +1,5 @@
+# GitHub Native Funding Configuration
+# Supported platforms format documentation can be verified on GitHub Docs
+
+github: [aldanedev-create]
+custom: ["https://flaxon-website.vercel.app/"]

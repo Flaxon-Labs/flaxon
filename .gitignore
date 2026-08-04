@@ -4,7 +4,6 @@
 *.pyc
 *.pyo
 *.AGENTS
-*.github/
 *.claude/
 *.tox/
 *.ruff_cache/
