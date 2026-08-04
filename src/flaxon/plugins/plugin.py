@@ -13,6 +13,15 @@ class Plugin(ABC):
     requires: list[str] = []
     provides: list[str] = []
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Every subclass gets its OWN list, copied from whatever it declared
+        # (or inherited). Without this, "requires"/"provides" default to the
+        # exact same [] object shared across every Plugin subclass, so one
+        # plugin appending to its own list silently pollutes every other one.
+        cls.requires = list(cls.__dict__.get("requires", cls.requires))
+        cls.provides = list(cls.__dict__.get("provides", cls.provides))
+
     @abstractmethod
     def setup(self, app: Any) -> None:
         pass

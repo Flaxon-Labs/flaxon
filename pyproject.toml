@@ -208,6 +208,7 @@ exclude = [
     "^.tox/",
     "^tests/",
     "^examples/",
+     "docs/*",
 ]
 
 [[tool.mypy.overrides]]
