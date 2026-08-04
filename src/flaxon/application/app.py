@@ -215,18 +215,18 @@ class Flaxon:
 
         self._openapi_generator = OpenAPIGenerator(title=title, version=version)
 
-        @self.router.get(spec_url)
+        @self.router.get(spec_url, name="flaxon_openapi_spec")
         async def openapi_spec() -> Any:
             from flaxon.http import JSONResponse
             return JSONResponse(self._openapi_generator.generate_from_app(self))
 
         if docs_url:
-            @self.router.get(docs_url)
+            @self.router.get(docs_url, name="flaxon_swagger_docs")
             async def swagger_docs() -> Any:
                 return SwaggerUI(openapi_url=spec_url, title=title).render()
 
         if redoc_url:
-            @self.router.get(redoc_url)
+            @self.router.get(redoc_url, name="flaxon_redoc_docs")
             async def redoc_docs() -> Any:
                 return ReDoc(openapi_url=spec_url, title=title).render()
 

@@ -32,6 +32,11 @@ class DocsCommand(Command):
         parser.add_argument(
             "--indent", type=int, default=2, help="JSON indent width, 0 for compact output (default: 2)"
         )
+        parser.add_argument(
+            "--include-internal",
+            action="store_true",
+            help="Include Flaxon's own system routes (/health, /metrics, /docs, etc.) in the spec",
+        )
 
     def _run(self, args: argparse.Namespace, console: Any) -> int:
         from flaxon.openapi import OpenAPIGenerator
@@ -47,7 +52,7 @@ class DocsCommand(Command):
         generator = OpenAPIGenerator(title=title, version=args.version)
 
         try:
-            spec = generator.generate_from_app(app)
+            spec = generator.generate_from_app(app, include_internal=args.include_internal)
         except Exception as exc:
             console.error(f"Failed to generate OpenAPI spec: {exc}")
             return 1

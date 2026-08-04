@@ -5,6 +5,7 @@
 *.pyo
 *.AGENTS
 *.github/
+*.claude/
 *.tox/
 *.ruff_cache/
 *.pytest_cache/

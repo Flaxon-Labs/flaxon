@@ -77,7 +77,7 @@ class OpenAPIGenerator:
             },
         }
 
-    def generate_from_app(self, app: Any) -> dict[str, Any]:
+    def generate_from_app(self, app: Any, include_internal: bool = False) -> dict[str, Any]:
         converter_to_openapi_type = {
             "int": "integer",
             "float": "number",
@@ -92,6 +92,9 @@ class OpenAPIGenerator:
             Schema = None
 
         for route in app.router.routes:
+            if not include_internal and (route.name or "").startswith("flaxon_"):
+                continue
+
             openapi_path = route.path
             for name, converter_name in getattr(route, "parameters", []):
                 openapi_path = openapi_path.replace(f"<{converter_name}:{name}>", f"{{{name}}}")
