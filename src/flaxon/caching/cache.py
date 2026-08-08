@@ -64,12 +64,25 @@ class Cache:
         await self.set(key, value, ttl)
         return value
 
-    async def increment(self, key: str, amount: int = 1) -> int:
-        async with self._lock:
-            value = await self.get(key, 0)
-            new_value = int(value) + amount
-            await self.set(key, new_value)
+async def increment(self, key: str, amount: int = 1) -> int:
+    async with self._lock:
+        now = time.time()
+        entry = self._cache.get(key)
+        if entry is not None:
+            value, expires, created = entry
+            if expires is not None and now > expires:
+                entry = None
+
+        if entry is None:
+            new_value = amount
+            expires = now + self.default_ttl if self.default_ttl > 0 else None
+            self._cache[key] = (new_value, expires, now)
             return new_value
+
+        value, expires, created = entry
+        new_value = int(value) + amount
+        self._cache[key] = (new_value, expires, created)
+        return new_value
 
     async def decrement(self, key: str, amount: int = 1) -> int:
         return await self.increment(key, -amount)

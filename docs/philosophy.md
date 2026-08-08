@@ -286,7 +286,6 @@ Flaxon is a good choice for:
 
 Flaxon may not be the best choice when:
 
-* You need a traditional full-stack framework with built-in admin systems and many bundled features.
 * You are creating only a simple static website.
 * You require maximum CPU performance from a compiled language.
 * You need an ecosystem with decades of existing packages and integrations.

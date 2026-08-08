@@ -345,7 +345,6 @@ flaxon run app:app --reload
 | GitHub | https://github.com/aldanedev-create/Flaxon-Backend-Framework |
 | PyPI | https://pypi.org/project/flaxon |
 | VS Code Extension | https://marketplace.visualstudio.com |
-| Discord | https://discord.gg/flaxon |
 
 ---
 ````
