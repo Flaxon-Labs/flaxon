@@ -1,4 +1,4 @@
-# Include all Python source files
+# Include core project files
 include pyproject.toml
 include README.md
 include LICENSE
@@ -20,14 +20,8 @@ recursive-include examples *.html
 recursive-include examples *.json
 recursive-include examples *.md
 
-# Include documentation
-recursive-include docs *.md
-recursive-include docs *.rst
-recursive-include docs *.png
-recursive-include docs *.svg
-
-# Include static assets if any
-recursive-include src/flaxon/py.typed
+# Include static assets
+include src/flaxon/py.typed
 
 # Exclude unnecessary files
 global-exclude *.pyc
@@ -43,3 +37,6 @@ global-exclude .coverage
 global-exclude *.log
 global-exclude .DS_Store
 global-exclude *.egg-info
+
+# Explicitly exclude the docs folder from PyPI uploads
+prune docs

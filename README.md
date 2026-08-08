@@ -302,7 +302,7 @@ Simple applications remain simple; large applications gain structure without los
 
 ## Production Readiness
 
-Flaxon is currently in alpha. It is suitable for evaluation, experimentation, and learning. Production use is possible with careful testing and monitoring, api i now stable but still be carefull for extending the framework plugins/extension is available while publish not fully functional Mainternaier/author will fix them some time later  . 
+Flaxon is currently in beta. It is suitable for evaluation, experimentation, and learning. Production use is possible with careful testing and monitoring.
 
 
 
