@@ -17,6 +17,8 @@
 
 Flaxon combines Flask-like ease, structured large-application development, async-first networking, readable debugging, optional Jinja2 templates, and complete freedom over your frontend and client technologies.
 
+Author: Aldane Hutchinson
+
 check out the docs on website below ⬇️⬇️⬇️⬇️
 
 [Visit Flaxon Website](https://flaxon-website.vercel.app/)
