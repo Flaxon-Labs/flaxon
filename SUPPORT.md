@@ -1,39 +1,30 @@
-
----
-
-## SUPPORT.md
-
-```markdown
 # Support
 
-Welcome to Flaxon! Here's how to get help.
+Welcome to Flaxon! This document explains where developers can get help,
+report issues, and contribute to the project.
 
 ## Documentation
 
-Start with our official documentation:
+Start with the official Flaxon documentation:
 
 - [Quick Start Guide](https://flaxon.dev/quickstart)
 - [API Reference](https://flaxon.dev/api)
 - [Guides](https://flaxon.dev/guides)
-- [Examples](https://github.com/flaxon/flaxon/tree/main/examples)
+- [Examples](https://github.com/aldanedev-create/Flaxon-Backend-Framework/tree/main/examples)
 
-## Community
+For the latest source code, releases, documentation, and development
+information, visit the
+[Flaxon GitHub repository](https://github.com/aldanedev-create/Flaxon-Backend-Framework).
+
+## Community and Development
 
 ### GitHub
 
-- **Issues**: [Report bugs](https://github.com/flaxon/flaxon/issues/new/choose)
-- **Discussions**: [Ask questions and share ideas](https://github.com/flaxon/flaxon/discussions)
-- **Pull Requests**: [Contribute code](https://github.com/flaxon/flaxon/pulls)
+The GitHub repository is the primary location for project development.
 
-### Chat
-
-- **Discord**: [Join our Discord server](https://discord.gg/flaxon)
-- **Slack**: [Join our Slack workspace](https://flaxon.slack.com) *(invite required)*
-
-### Social
-
-- **Twitter/X**: [@flaxon](https://twitter.com/flaxon)
-- **Reddit**: [r/flaxon](https://reddit.com/r/flaxon)
+- **Issues** — [Report bugs and technical problems](https://github.com/aldanedev-create/Flaxon-Backend-Framework/issues)
+- **Discussions** — [Ask questions and discuss ideas](https://github.com/aldanedev-create/Flaxon-Backend-Framework/discussions)
+- **Pull Requests** — [Submit code and documentation contributions](https://github.com/aldanedev-create/Flaxon-Backend-Framework/pulls)
 
 ## When to Use Each Channel
 
@@ -41,41 +32,129 @@ Start with our official documentation:
 |------------|--------------|
 | Bug report | GitHub Issues |
 | Feature request | GitHub Discussions |
-| Help/question | Discord / GitHub Discussions |
-| Security issue | SECURITY.md |
-| Documentation error | GitHub Issues |
+| General question | GitHub Discussions |
+| Documentation issue | GitHub Issues |
 | Code contribution | Pull Request |
+| Security vulnerability | `SECURITY.md` |
+| Plugin issue | GitHub Issues |
+| Plugin contribution | Pull Request |
 
-## FAQ
+## Current Project Status
 
-### Is Flaxon production ready?
+Flaxon 2.0 is the current major development version.
 
-Flaxon is currently in **alpha** (0.1.x). While the core is functional, the API is not yet stable. Production use is possible with careful testing, but we recommend waiting for 1.0 for critical applications.
+The **core framework API is largely stable** and the project has an established
+plugin architecture.
 
-### How is Flaxon different from Flask?
+Ongoing development focuses on:
 
-Flaxon is **async-first** and built on ASGI. It includes optional structure for larger applications and WebSocket support as a core feature.
+- Bug fixes and maintenance
+- Plugin stabilization
+- Compatibility testing
+- Security improvements
+- Performance testing
+- Documentation
+- Developer tooling
+- Example applications
+- Ecosystem development
 
-### How is Flaxon different from Django?
+Individual plugins may have different levels of maturity and may require
+additional testing before being used in critical production systems.
 
-Flaxon is **technology-neutral** and does not force a database, ORM, or frontend. It provides structure when you need it, but doesn't require it.
+For important applications, users should test the specific Flaxon version
+and plugins they intend to deploy.
 
-### Do I need to use Jinax?
+## How Is Flaxon Different from Flask?
 
-No! Jinax is optional. Flaxon works perfectly as a pure JSON API framework.
+Flaxon is designed as an **async-first Python backend framework built around
+ASGI**.
 
-### What databases are supported?
+It provides Flask-style routing and application development while providing
+built-in support for asynchronous applications, WebSockets, middleware,
+validation, testing, debugging, and extensibility.
 
-Flaxon doesn't include a built-in ORM. You can use SQLAlchemy, SQLModel, Tortoise ORM, asyncpg, Motor, or any other database library.
+## How Is Flaxon Different from Django?
 
-## Commercial Support
+Flaxon is designed to be **technology-neutral**.
 
-For commercial support, SLAs, or enterprise consulting, contact us at **enterprise@flaxon.dev**.
+It does not require developers to use a particular:
+
+- Database
+- ORM
+- Frontend framework
+- Authentication system
+- Template engine
+
+Developers can select the technologies appropriate for their application
+while using Flaxon for the backend application layer.
+
+## Do I Need to Use Jinax?
+
+No.
+
+Jinax is optional. Flaxon can be used as a pure JSON/API framework without
+using a template engine.
+
+## What Databases Are Supported?
+
+Flaxon does not require a specific ORM or database system.
+
+Developers can integrate Flaxon with technologies such as:
+
+- SQLAlchemy
+- SQLModel
+- Tortoise ORM
+- asyncpg
+- Motor
+- Other Python database libraries
+
+The goal is to keep the framework independent of a single database technology.
+
+## Plugins
+
+Flaxon's core includes an extensible plugin architecture.
+
+Plugins can provide additional functionality without requiring the core
+framework to contain every possible integration.
+
+The plugin ecosystem is actively being developed and stabilized. Plugin
+documentation and testing are therefore an ongoing area of development.
+
+## Security
+
+Security vulnerabilities should **not** be reported through public GitHub
+issues.
+
+Please follow the instructions in
+[`SECURITY.md`](SECURITY.md) for responsible vulnerability reporting.
 
 ## Contributing
 
-Want to help improve Flaxon? Check out our [Contributing Guide](CONTRIBUTING.md).
+Flaxon is an open-source project and welcomes contributions to:
+
+- Core framework development
+- Plugins
+- Documentation
+- Tests
+- Examples
+- Developer tooling
+- Bug fixes
+- Performance improvements
+
+Before contributing, please read the
+[Contributing Guide](CONTRIBUTING.md).
+
+## Commercial Support
+
+Commercial support, consulting, or enterprise services may be available in
+the future.
+
+For project-related support, please use the public GitHub project channels
+described above.
 
 ---
 
-We're here to help! Let us know how we can make Flaxon better for you. 💙
+Flaxon is built in the open, and contributions, feedback, bug reports, and
+documentation improvements are welcome.
+
+Thank you for helping improve Flaxon. 💙
