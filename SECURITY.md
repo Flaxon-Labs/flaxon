@@ -2,79 +2,58 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | ⚠️ Alpha - No guarantees |
-| 1.0.x   | ✅ Full support    |
+Flaxon follows a security-focused maintenance policy. The current 2.x release
+series is the primary supported version.
+
+| Version | Supported |
+| ------- | --------- |
+| 2.x     | ✅ Fully supported |
+| 1.x     | ⚠️ Legacy / limited support |
+| 0.x     | ❌ Unsupported |
+
+Security fixes will be prioritized for the actively supported release series.
 
 ## Reporting a Vulnerability
 
-We take security seriously. If you discover a security vulnerability, please:
+We take security vulnerabilities seriously.
 
-1. **DO NOT** open a public GitHub issue
-2. Email me at **aldanehutchinson5@gmail.com**
-3. Provide as much information as possible:
-   - Framework version
+If you discover a security vulnerability in Flaxon:
+
+1. **DO NOT** open a public GitHub issue.
+2. Email the maintainer at **aldanehutchinson5@gmail.com**.
+3. Include as much of the following information as possible:
+   - Flaxon version
    - Python version
+   - Operating system
    - Step-by-step reproduction
-   - Potential impact
-   - Suggested fix (if any)
+   - Expected behavior
+   - Actual behavior
+   - Potential security impact
+   - Suggested fix, if available
 
-We will acknowledge your report within 48 hours and will work to resolve it as quickly as possible.
+We aim to acknowledge vulnerability reports within **48 hours** and will
+investigate and address confirmed vulnerabilities as quickly as practical.
 
 ## Security Best Practices
 
 ### Production Deployment
 
-- **Never** enable `debug=True` in production
-- Use a strong `SECRET_KEY` (32+ random bytes)
-- Set `ALLOWED_HOSTS` to your domain(s)
-- Terminate TLS at your reverse proxy or load balancer
-- Use environment variables for secrets
-- Keep dependencies updated
+When deploying a Flaxon application to production:
+
+- **Never** enable `debug=True` in production.
+- Use a strong `SECRET_KEY` generated from a secure random source.
+- Configure `ALLOWED_HOSTS` for the application's expected domains.
+- Terminate TLS using HTTPS at a trusted reverse proxy or load balancer.
+- Store secrets in environment variables or an appropriate secrets manager.
+- Keep Flaxon and its dependencies updated.
+- Run production applications with the minimum required permissions.
 
 ### Environment Variables
 
+Example production configuration:
+
 ```env
-# Production example
 FLAXON_ENV=production
 FLAXON_DEBUG=false
-FLAXON_SECRET_KEY=<32+ random hex bytes>
+FLAXON_SECRET_KEY=<secure-random-secret>
 FLAXON_ALLOWED_HOSTS=api.example.com,example.com
-
-
-Built-in Security Features
-Autoescaping in Jinax templates
-
-Request validation with declarative schemas
-
-Security headers: X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy
-
-Request IDs for tracing
-
-Sensitive data redaction in debug mode
-
-Rate limiting (single-process, configurable)
-
-Production-safe error responses (no traceback leakage)
-
-Vulnerability Disclosure Process
-Report received and acknowledged
-
-We investigate and validate the vulnerability
-
-We develop a fix
-
-We release a patch version
-
-We credit the reporter (if desired)
-
-Responsible Disclosure
-We believe in responsible disclosure. Please give us reasonable time to fix the issue before sharing details publicly.
-
-Contact
-Security: security@flaxon.dev
-
-General: maintainers@flaxon.dev
-
-Thank you for helping keep Flaxon and its users safe! 🔒
