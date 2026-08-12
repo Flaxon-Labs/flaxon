@@ -2,119 +2,96 @@
 
 Flaxon's development roadmap and milestone planning.
 
-## Version 0.1.0 — Core Prototype ✅
+## Version 2.0 — Core Framework ✅
 
-**Released:** July 2026
+**Status:** Largely Stable
 
-- ASGI application with HTTP, WebSocket, lifespan
-- Flask-style decorators with typed parameters
-- Request validation with declarative schemas
-- WebSocket support with room broadcasting
-- Jinax template integration (optional Jinja2)
-- Middleware: CORS, request ID, security headers, rate limiting
-- CLI: run, routes, doctor, new
-- Testing: sync and async test clients
-- Debugger with development/production modes
-- Sensitive data redaction
+Flaxon 2.0 represents the current mature state of the core framework.
 
-## Version 0.2.0 — Protocol Hardening
+- ASGI application architecture
+- HTTP and WebSocket support
+- Lifespan management
+- Flask-style routing and decorators
+- Typed route parameters
+- Request validation
+- Middleware system
+- CORS
+- Request IDs
+- Security headers
+- Rate limiting
+- Jinax template integration
+- CLI tooling
+- Sync and async testing clients
+- Development and production debugging
+- Sensitive-data redaction
+- Core plugin architecture
+- Plugin lifecycle and extension mechanisms
+- Developer tooling
+- Documentation and examples
+- Benchmarking infrastructure
 
-**Target:** Q3 2026
+The core API is considered largely stable. Ongoing development focuses primarily on
+bug fixes, compatibility, testing, security, performance, and ecosystem development.
 
-- [ ] ASGI protocol conformance tests
-- [ ] HTTP/1.1 and HTTP/2 improvements
-- [ ] Multipart/form-data uploads
-- [ ] Streaming request body handling
-- [ ] WebSocket disconnect and backpressure handling
-- [ ] Graceful shutdown improvements
-- [ ] Request and response timeouts
-- [ ] Trusted host middleware
-- [ ] Body size limit middleware
-- [ ] Improved middleware error recovery
+## Version 2.x — Ecosystem & Production Maturity 🚧
 
-## Version 0.3.0 — Production Services
+**Current Development**
 
-**Target:** Q4 2026
+- [ ] Stabilize individual official plugins
+- [ ] Expand plugin test coverage
+- [ ] Improve plugin documentation
+- [ ] Improve plugin discovery and distribution
+- [ ] Expand ASGI compatibility testing
+- [ ] Improve HTTP and WebSocket edge-case handling
+- [ ] Expand security testing
+- [ ] Improve CI and release automation
+- [ ] Expand performance benchmarks
+- [ ] Improve deployment documentation
+- [ ] Create complete example applications
+- [ ] Improve migration and upgrade documentation
 
-- [ ] Session management (signed cookies + backends)
-- [ ] OpenAPI/Swagger documentation generation
-- [ ] Structured logging (JSON logs with request context)
-- [ ] Health check endpoints (liveness, readiness)
-- [ ] Prometheus metrics integration
-- [ ] Better configuration management (settings classes)
-- [ ] Environment-specific configuration
-- [ ] .env file support
-- [ ] Email sending (SMTP, console)
-- [ ] Static file serving
+## Version 2.x — Official Plugin Ecosystem 🚧
 
-## Version 0.4.0 — Plugins and Ecosystem
+Official and community plugins will provide optional integrations without
+increasing the size of the core framework.
 
-**Target:** Q1 2027
+Planned ecosystem areas include:
 
-- [ ] Formal plugin system with discovery
-- [ ] flaxon-sqlalchemy: SQLAlchemy integration
-- [ ] flaxon-redis: Redis caching and rate limiting
-- [ ] flaxon-auth: Authentication (JWT, OAuth, sessions)
-- [ ] flaxon-storage: File storage (local, S3)
-- [ ] flaxon-observability: OpenTelemetry integration
-- [ ] flaxon-tasks: Background task queue
-- [ ] Plugin hooks for: startup, shutdown, routes, CLI commands, health checks
+- SQLAlchemy
+- Redis
+- Authentication
+- OAuth
+- Storage
+- Observability
+- Background tasks
+- Caching
+- Additional database integrations
+- Cloud services
 
-## Version 0.5.0 — Distributed Systems
+Plugin quality, compatibility and test coverage will be treated as separate
+release concerns from the core framework.
 
-**Target:** Q2 2027
+## Future Development
 
-- [ ] Distributed task queues (Redis, RabbitMQ)
-- [ ] Scheduled tasks and cron jobs
-- [ ] Redis-backed WebSocket broadcaster
-- [ ] Distributed rate limiting
-- [ ] Distributed caching
-- [ ] Database connection pooling
-- [ ] Transaction management
-- [ ] Migration tooling
-- [ ] Deployment guides (Docker, Kubernetes)
+Potential future capabilities include:
 
-## Version 0.9.0 — Release Candidate
-
-**Target:** Q3 2027
-
-- [ ] API freeze
-- [ ] Security audit
-- [ ] Performance benchmarks
-- [ ] Migration guide from 0.x
-- [ ] Broad CI and compatibility testing
-- [ ] Documentation complete
-- [ ] Example applications comprehensive
-
-## Version 1.0.0 — Stable Release
-
-**Target:** Q4 2027
-
-- [ ] Documented compatibility policy
-- [ ] Signed releases
-- [ ] Governance model
-- [ ] Long-term support (LTS) policy
-- [ ] Production-ready certification
-
-## Future Ideas
-
-### Version 1.1+
-
-- GraphQL support
-- gRPC support
-- Server-Sent Events (SSE)
-- WebSockets over HTTP/3 (QUIC)
-- Real-time collaboration features
-- Admin dashboard
-- Code generation from OpenAPI
-- Database migration tools
-- More database adapters
-- More cloud service integrations
+- GraphQL improvements
+- gRPC
+- Server-Sent Events
+- HTTP/3 and QUIC WebSockets
+- Real-time collaboration
+- OpenAPI tooling
+- Code generation
+- Additional database adapters
+- Additional cloud integrations
 
 ## Contribution Wanted!
 
-We welcome contributions at any stage. Check our [Contributing Guide](CONTRIBUTING.md) to get started.
+We welcome contributions to the core framework, plugins, documentation,
+testing and developer tooling.
+
+Check our [Contributing Guide](CONTRIBUTING.md) to get started.
 
 ---
 
-**Help us shape the future of Python backend development.** 🚀
+**Help us build the future of Python backend development.** 🚀
