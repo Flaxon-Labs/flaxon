@@ -308,16 +308,16 @@ from flaxon.validation import fields
 
 class RegisterRequest(Schema):
 
-    username = fields.String(
+    username = fields.StrField(
         required=True,
         min_length=3,
     )
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True,
     )
 
-    password = fields.String(
+    password = fields.StrField(
         required=True,
         min_length=8,
     )
@@ -452,11 +452,11 @@ from flaxon.validation import fields
 
 class DeviceRegistration(Schema):
 
-    device_id = fields.String(
+    device_id = fields.StrField(
         required=True
     )
 
-    platform = fields.Choice(
+    platform = fields.ChoiceField(
 
         [
 
@@ -474,7 +474,7 @@ class DeviceRegistration(Schema):
 
     )
 
-    notification_token = fields.String(
+    notification_token = fields.StrField(
         required=True
     )
 ```

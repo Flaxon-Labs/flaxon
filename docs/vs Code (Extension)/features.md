@@ -187,8 +187,8 @@ Hover over Flaxon APIs to view inline documentation, examples, and parameter des
 | `@app.get` | Route usage and parameters |
 | `@app.post` | Route usage and parameters |
 | `@app.websocket` | WebSocket route documentation |
-| `fields.String` | Field options and examples |
-| `fields.Integer` | Integer field documentation |
+| `fields.StrField` | Field options and examples |
+| `fields.IntField` | Integer field documentation |
 | `HTTPException` | Status codes and usage |
 | `Schema` | Schema documentation |
 
@@ -450,7 +450,7 @@ Provides syntax highlighting specifically designed for Flaxon applications.
 |---------|-----------|
 | Route Decorators | `@app.get`, `@app.post` |
 | Path Parameters | `<int:user_id>` |
-| Schema Fields | `fields.String` |
+| Schema Fields | `fields.StrField` |
 | HTTP Exceptions | `HTTPException` |
 | WebSockets | `@app.websocket` |
 | Validation | `Schema`, `required=True` |

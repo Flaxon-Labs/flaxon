@@ -16,6 +16,13 @@ class Sanitizer:
 
     @staticmethod
     def strip_tags(value: str) -> str:
+        # Remove executable/active element contents before stripping markup.
+        value = re.sub(
+            r"<(script|style|iframe|object|embed)\b[^>]*>.*?</\1\s*>",
+            "",
+            value,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
         return re.sub(r"<[^>]*>", "", value)
 
     @staticmethod

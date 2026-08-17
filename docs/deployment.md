@@ -29,20 +29,13 @@ flaxon run app:app \
 
 ---
 
-## Running from Python
+## Running with Uvicorn
 
-You can also start your application directly from Python.
+Flaxon is an ASGI application. If you do not use the Flaxon CLI, run it with
+an ASGI server such as Uvicorn:
 
-```python
-from flaxon import Flaxon
-
-app = Flaxon("my-app")
-
-app.run(
-    host="0.0.0.0",
-    port=8000,
-    workers=4,
-)
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 ---
@@ -315,8 +308,8 @@ Before deploying to production:
 
 Before going live, verify the following:
 
-- ✅ `FLAXON_ENV=production`
-- ✅ `FLAXON_DEBUG=false`
+- ✅ Set `FLAXON_ENV=production` if your application uses environment-specific configuration.
+- ✅ Set `FLAXON_DEBUG=false`.
 - ✅ Secure `FLAXON_SECRET_KEY`
 - ✅ Configure `FLAXON_ALLOWED_HOSTS`
 - ✅ HTTPS enabled

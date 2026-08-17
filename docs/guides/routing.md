@@ -8,7 +8,7 @@ Flaxon provides a fast, flexible, and familiar routing system for building web a
 
 - Decorator-based routing
 - Async-first request handling
-- Flask-style and brace-style route parameters
+- Angle-bracket route parameters
 - Nested routers
 - Route groups
 - Named routes
@@ -54,9 +54,10 @@ async def delete_user(user_id: int):
 
 ---
 
-# Supported HTTP Methods
+# Supported HTTP methods
 
-Flaxon supports every standard HTTP method.
+Flaxon provides convenience decorators for `GET`, `POST`, `PUT`, `PATCH`, and
+`DELETE`. Register another method explicitly with `app.route()`.
 
 ```python
 @app.get("/")
@@ -84,13 +85,8 @@ async def delete_route():
     ...
 
 
-@app.head("/")
-async def head_route():
-    ...
-
-
-@app.options("/")
-async def options_route():
+@app.route("/", methods={"HEAD", "OPTIONS"})
+async def metadata_route():
     ...
 ```
 
@@ -112,26 +108,6 @@ async def get_post(slug: str):
 
 
 @app.get("/files/<path:file_path>")
-async def get_file(file_path: str):
-    return {"path": file_path}
-```
-
----
-
-## Brace-Style Parameters
-
-```python
-@app.get("/users/{user_id:int}")
-async def get_user(user_id: int):
-    return {"id": user_id}
-
-
-@app.get("/posts/{slug:slug}")
-async def get_post(slug: str):
-    return {"slug": slug}
-
-
-@app.get("/files/{file_path:path}")
 async def get_file(file_path: str):
     return {"path": file_path}
 ```

@@ -148,17 +148,17 @@ from flaxon.validation import Schema, fields
 
 class CreateUser(Schema):
 
-    name = fields.String(
+    name = fields.StrField(
         required=True,
         min_length=2,
         max_length=80
     )
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True
     )
 
-    age = fields.Integer(
+    age = fields.IntField(
         required=False,
         minimum=13,
         maximum=120
@@ -217,12 +217,12 @@ app = Flaxon(
 
 class CreateUser(Schema):
 
-    name = fields.String(
+    name = fields.StrField(
         required=True,
         min_length=2
     )
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True
     )
 
@@ -264,14 +264,10 @@ async def echo(socket: WebSocket):
             "echo": message
         })
 
-
-if __name__ == "__main__":
-
-    app.run(
-        host="0.0.0.0",
-        port=8000
-    )
 ```
+
+Run this application with `flaxon run app:app --reload` during development, or
+with Uvicorn in production.
 
 ---
 
@@ -294,4 +290,3 @@ If you run into problems:
 * Search existing GitHub issues
 * Start a GitHub discussion
 * Report bugs and feature requests
-

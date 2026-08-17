@@ -7,6 +7,7 @@ This module provides middleware for validating the Host header against allowed h
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlsplit
 
 from flaxon.exceptions import BadRequest
 
@@ -56,6 +57,12 @@ class TrustedHostsMiddleware(Middleware):
 
     def _is_allowed(self, host: str) -> bool:
         """Check if the host is allowed."""
+        # ASGI supplies the Host header, which commonly includes a port in
+        # development and can include one in production.
+        hostname = urlsplit(f"//{host}").hostname
+        if hostname is None:
+            return False
+        host = hostname.lower()
         if host in self.allowed_hosts:
             return True
 

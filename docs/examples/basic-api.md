@@ -8,7 +8,7 @@ This example demonstrates a simple REST API built with Flaxon.
 ```python
 # app.py
 
-from flaxon import Flaxon
+from flaxon import Flaxon, JSONResponse, NotFound
 from flaxon.validation import Schema, fields
 
 app = Flaxon("basic-api", debug=True)
@@ -41,13 +41,13 @@ async def home():
 
 # Schema for user creation
 class CreateUser(Schema):
-    name = fields.String(
+    name = fields.StrField(
         required=True,
         min_length=2,
         max_length=80,
     )
-    email = fields.Email(required=True)
-    age = fields.Integer(
+    email = fields.EmailField(required=True)
+    age = fields.IntField(
         required=False,
         minimum=13,
         maximum=120,
@@ -56,13 +56,13 @@ class CreateUser(Schema):
 
 # Schema for user update
 class UpdateUser(Schema):
-    name = fields.String(
+    name = fields.StrField(
         required=False,
         min_length=2,
         max_length=80,
     )
-    email = fields.Email(required=False)
-    age = fields.Integer(
+    email = fields.EmailField(required=False)
+    age = fields.IntField(
         required=False,
         minimum=13,
         maximum=120,
@@ -87,9 +87,7 @@ async def get_user(user_id: int):
         if user["id"] == user_id:
             return user
 
-    return {
-        "error": "User not found",
-    }, 404
+    raise NotFound("User not found")
 
 
 # Create user
@@ -103,10 +101,10 @@ async def create_user(data: CreateUser):
     user_id_counter += 1
     users.append(user)
 
-    return {
+    return JSONResponse({
         "created": True,
         "user": user,
-    }, 201
+    }, status_code=201)
 
 
 # Update user
@@ -114,16 +112,19 @@ async def create_user(data: CreateUser):
 async def update_user(user_id: int, data: UpdateUser):
     for user in users:
         if user["id"] == user_id:
-            user.update(data.to_dict())
+            changes = {
+                key: value
+                for key, value in data.to_dict().items()
+                if value is not None
+            }
+            user.update(changes)
 
             return {
                 "updated": True,
                 "user": user,
             }
 
-    return {
-        "error": "User not found",
-    }, 404
+    raise NotFound("User not found")
 
 
 # Delete user
@@ -138,9 +139,7 @@ async def delete_user(user_id: int):
                 "id": user_id,
             }
 
-    return {
-        "error": "User not found",
-    }, 404
+    raise NotFound("User not found")
 ````
 
 ---

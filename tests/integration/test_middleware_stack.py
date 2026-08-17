@@ -2,6 +2,7 @@ import pytest
 
 from flaxon import Flaxon
 from flaxon.middleware import CORSMiddleware, Middleware, RequestIDMiddleware, SecurityHeadersMiddleware
+from flaxon.security import CORSMiddleware as SecurityCORSMiddleware
 from flaxon.security import RateLimitMiddleware
 from flaxon.testing import TestClient
 
@@ -74,6 +75,41 @@ def test_cors_preflight(app_with_middleware):
     assert "access-control-allow-origin" in response.headers
     assert "access-control-allow-methods" in response.headers
     assert "access-control-allow-credentials" in response.headers
+    assert response.headers["vary"] == "origin"
+
+
+def test_cors_rejects_wildcard_with_credentials():
+    with pytest.raises(ValueError, match="explicit allowed_origins"):
+        CORSMiddleware(lambda scope, receive, send: None, allow_credentials=True)
+
+
+def test_security_cors_accepts_its_documented_options():
+    middleware = SecurityCORSMiddleware(
+        lambda scope, receive, send: None,
+        allowed_origins=["https://example.com"],
+        allowed_methods=["GET"],
+        allowed_headers=["content-type"],
+        exposed_headers=["x-request-id"],
+    )
+
+    assert middleware.allowed_methods == "GET"
+    assert middleware.allowed_headers == "content-type"
+    assert middleware.exposed_headers == "x-request-id"
+
+
+def test_security_cors_preflight_varies_by_origin():
+    app = Flaxon("security-cors")
+    app.add_middleware(
+        SecurityCORSMiddleware,
+        allowed_origins=["https://example.com"],
+        allowed_methods=["GET"],
+    )
+
+    response = TestClient(app).options("/", headers={"origin": "https://example.com"})
+
+    assert response.status_code == 204
+    assert response.headers["access-control-allow-origin"] == "https://example.com"
+    assert response.headers["vary"] == "Origin"
 
 
 def test_cors_preflight_unauthorized_origin(app_with_middleware):

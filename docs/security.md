@@ -49,12 +49,12 @@ from flaxon.validation import Schema, fields
 
 class CreateUser(Schema):
 
-    name = fields.String(
+    name = fields.StrField(
         required=True,
         min_length=2
     )
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True
     )
 ```

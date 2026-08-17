@@ -13,9 +13,9 @@ app.add_middleware(RateLimitMiddleware, requests=120, window_seconds=60)
 
 
 class CreateUser(Schema):
-    name = fields.String(required=True, min_length=2, max_length=80)
-    email = fields.Email(required=True)
-    age = fields.Integer(required=False, minimum=13, maximum=120)
+    name = fields.StrField(required=True, min_length=2, max_length=80)
+    email = fields.EmailField(required=True)
+    age = fields.IntField(required=False, minimum=13, maximum=120)
 
 
 @app.get("/")

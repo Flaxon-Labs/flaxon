@@ -102,9 +102,10 @@ app.add_middleware(
 
     SecurityHeadersMiddleware,
 
-    hsts=True,
-
-    csp="default-src 'self'"
+    headers={
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "content-security-policy": "default-src 'self'",
+    }
 )
 ```
 
@@ -112,8 +113,6 @@ Default headers include:
 
 - X-Content-Type-Options
 - X-Frame-Options
-- Referrer-Policy
-- Permissions-Policy
 
 ---
 
@@ -132,7 +131,7 @@ app.add_middleware(
         "https://example.com"
     ],
 
-    allowed_methods=[
+    allow_methods=[
         "GET",
         "POST",
         "PUT",

@@ -157,12 +157,10 @@ The router is responsible for:
 - HTTP method dispatch
 - Path parameter conversion
 
-Supported parameter styles include:
+Route templates use angle-bracket parameters:
 
 ```python
 /users/<int:id>
-
-/users/{id}
 ```
 
 ---
@@ -179,7 +177,6 @@ The `Request` object provides convenient access to:
 - Query parameters
 - Path parameters
 - Request body
-- Uploaded files
 
 Body methods are asynchronous for maximum performance.
 
@@ -197,7 +194,6 @@ Supported return values include:
 - `bytes`
 - `Response`
 - Streaming responses
-- File responses
 
 ---
 

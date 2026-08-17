@@ -20,13 +20,14 @@ class CORSMiddleware(BaseCORSMiddleware):
     ) -> None:
         super().__init__(
             app,
-            allowed_origins=allowed_origins,
-            allowed_methods=allowed_methods,
-            allowed_headers=allowed_headers,
-            exposed_headers=exposed_headers,
+            allowed_origins=list(allowed_origins),
+            allow_methods=list(allowed_methods),
             allow_credentials=allow_credentials,
-            max_age=max_age,
         )
+        self.allowed_methods = ", ".join(allowed_methods)
+        self.allowed_headers = ", ".join(allowed_headers)
+        self.exposed_headers = ", ".join(exposed_headers)
+        self.max_age = max_age
         self.allow_private_network = allow_private_network
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
@@ -39,6 +40,7 @@ class CORSMiddleware(BaseCORSMiddleware):
 
         if scope.get("method") == "OPTIONS" and origin:
             headers = self._build_preflight_headers(allowed_origin)
+            headers.append((b"vary", b"Origin"))
             await send({"type": "http.response.start", "status": 204, "headers": headers})
             await send({"type": "http.response.body", "body": b"", "more_body": False})
             return

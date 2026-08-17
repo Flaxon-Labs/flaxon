@@ -173,6 +173,7 @@ docker-compose.*.yml
 # ============================================================
 # Package Manager
 # ============================================================
+node_modules/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml

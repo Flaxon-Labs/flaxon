@@ -158,7 +158,7 @@ Hover over:
 - `@app.get`
 - `@app.post`
 - `Schema`
-- `fields.String`
+- `fields.StrField`
 - `HTTPException`
 
 to view documentation.

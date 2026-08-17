@@ -5,9 +5,9 @@ app = Flaxon("android-backend")
 
 
 class DeviceRegistration(Schema):
-    device_id = fields.String(required=True, min_length=8)
-    platform = fields.Choice(["android"], required=True)
-    notification_token = fields.String(required=True, min_length=16)
+    device_id = fields.StrField(required=True, min_length=8)
+    platform = fields.ChoiceField(["android"], required=True)
+    notification_token = fields.StrField(required=True, min_length=16)
 
 
 @app.post("/api/v1/devices")

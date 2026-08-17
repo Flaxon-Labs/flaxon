@@ -508,7 +508,7 @@ You should:
 Example:
 
 ```python
-from flaxon.middleware import AuthenticationMiddleware
+from flaxon.security import AuthenticationMiddleware
 
 
 app.add_middleware(

@@ -153,23 +153,23 @@ from flaxon.validation import Schema, fields
 
 class CreateUser(Schema):
 
-    name = fields.String(
+    name = fields.StrField(
         required=True,
         min_length=2,
         max_length=80
     )
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True
     )
 
-    age = fields.Integer(
+    age = fields.IntField(
         required=False,
         minimum=13,
         maximum=120
     )
 
-    status = fields.Choice(
+    status = fields.ChoiceField(
         choices=[
             "active",
             "inactive",

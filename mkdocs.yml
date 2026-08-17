@@ -5,8 +5,8 @@ site_author: Aldane Hutchinson
 site_url: https://flaxon.dev
 
 # Repository
-repo_name: flaxon/flaxon
-repo_url: https://github.com/flaxon/flaxon
+repo_name: aldanedev-create/Flaxon-Backend-Framework
+repo_url: https://github.com/aldanedev-create/Flaxon-Backend-Framework
 edit_uri: blob/main/docs/
 
 # Copyright
@@ -93,8 +93,8 @@ markdown_extensions:
   - pymdownx.keys
   - pymdownx.magiclink:
       repo_url_shorthand: true
-      user: flaxon
-      repo: flaxon
+      user: aldanedev-create
+      repo: Flaxon-Backend-Framework
   - pymdownx.mark
   - pymdownx.smartsymbols
   - pymdownx.snippets:
@@ -168,7 +168,8 @@ nav:
       - Testing: guides/testing.md
       - Debugging: guides/debugging.md
       - Plugins: guides/plugins.md
-      - Mobile Backends: guides/mobile-backends.md
+      - Growing a Large Application: guides/scaling.md
+      - Mobile Backends: guides/mobile-developement.md
   - API Reference:
       - Application: api/application.md
       - Routing: api/routing.md
@@ -178,36 +179,28 @@ nav:
       - Security: api/security.md
       - Jinax: api/jinax.md
       - Testing: api/testing.md
+      - Tasks: api/tasks.md
   - Examples:
       - Basic API: examples/basic-api.md
       - React Backend: examples/react-backend.md
-      - Android Backend: examples/android-backend.md
+      - Android Backend: examples/android-Development.md
       - WebSocket Chat: examples/websocket-chat.md
       - Jinax Website: examples/jinax-website.md
       - Large Application: examples/large-application.md
   - Deployment:
       - Overview: deployment.md
-      - Docker: docker.md
-      - Kubernetes: kubernetes.md
-      - Cloud Platforms: cloud.md
+  - Ecosystem: ecosystem.md
   - Performance: performance.md
   - Security: security.md
   - Migration Guide: migration-guide.md
   - Contributing: contributing.md
-  - Changelog: changelog.md
-  - Roadmap: roadmap.md
+  - Updates: updates.md
 
 # Extra settings
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/flaxon/flaxon
-    - icon: fontawesome/brands/discord
-      link: https://discord.gg/flaxon
-    - icon: fontawesome/brands/twitter
-      link: https://twitter.com/flaxon
-    - icon: fontawesome/brands/python
-      link: https://pypi.org/project/flaxon-framework/
+      link: https://github.com/aldanedev-create/Flaxon-Backend-Framework
   consent:
     title: Cookie consent
     description: >-

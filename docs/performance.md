@@ -158,10 +158,10 @@ Caching reduces repeated database queries and improves response times.
 Example:
 
 ```python
-from flaxon.caching import cached
+from flaxon.caching import cached_async
 
 
-@cached(ttl=60)
+@cached_async(ttl=60)
 async def get_users():
 
     return await db.fetch_all(

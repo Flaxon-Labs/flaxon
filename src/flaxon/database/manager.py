@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextvars import ContextVar
 from typing import Any
 
 from .transactions import Transaction
@@ -12,7 +13,12 @@ class DatabaseManager:
 
     def __init__(self, pool: Any) -> None:
         self.pool = pool
-        self._transaction_depth = 0
+        # Transaction state is task-local: requests sharing a manager must not
+        # be treated as nested transactions.
+        self._transaction_depth: ContextVar[int] = ContextVar("flaxon_transaction_depth", default=0)
+        self._transaction_connection: ContextVar[Any | None] = ContextVar(
+            "flaxon_transaction_connection", default=None
+        )
 
     @property
     def _direct(self) -> bool:

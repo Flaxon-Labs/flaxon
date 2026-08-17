@@ -238,18 +238,10 @@ async def home(request):
 
 
 
-if __name__ == "__main__":
-
-    import asyncio
-
-    asyncio.run(seed_data())
-
-    app.run(
-        host="127.0.0.1",
-        port=8000,
-        reload=True,
-    )
 ```
+
+Seed data from a separate setup script or an application startup hook, then run
+the application with `flaxon run app:app --reload`.
 
 ---
 

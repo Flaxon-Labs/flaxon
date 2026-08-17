@@ -42,7 +42,7 @@ class GenerateCommand(Command):
     def _generate_model(self, name: str, path: Path) -> None:
         template = f'''class {name.capitalize()}(Schema):
     id = fields.Integer(required=True)
-    name = fields.String(required=True, max_length=255)
+    name = fields.StrField(required=True, max_length=255)
     created_at = fields.DateTime()
     updated_at = fields.DateTime()
 '''

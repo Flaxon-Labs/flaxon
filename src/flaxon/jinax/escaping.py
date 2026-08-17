@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 
@@ -33,7 +32,14 @@ class Escaper:
     def escape_js(cls, value: str) -> str:
         if not value:
             return value
-        return re.sub(r"['\"\\\r\n]", lambda m: f"\\{m.group(0)}", value)
+        replacements = {
+            "\\": "\\\\",
+            "'": "\\'",
+            '"': '\\"',
+            "\r": "\\r",
+            "\n": "\\n",
+        }
+        return "".join(replacements.get(character, character) for character in value)
 
     @classmethod
     def escape_css(cls, value: str) -> str:

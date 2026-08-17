@@ -84,12 +84,12 @@ def validation_schemas() -> dict[str, Any]:
     from flaxon.validation import Schema, fields
 
     class UserCreate(Schema):
-        name = fields.String(required=True, min_length=2, max_length=80)
+        name = fields.StrField(required=True, min_length=2, max_length=80)
         email = fields.Email(required=True)
         age = fields.Integer(required=False, minimum=13, maximum=120)
 
     class UserUpdate(Schema):
-        name = fields.String(required=False, min_length=2, max_length=80)
+        name = fields.StrField(required=False, min_length=2, max_length=80)
         email = fields.Email(required=False)
         age = fields.Integer(required=False, minimum=13, maximum=120)
 

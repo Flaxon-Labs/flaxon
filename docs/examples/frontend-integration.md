@@ -1,6 +1,7 @@
 # Frontend Integration Examples
 
-Flaxon works with modern frontend frameworks by providing fast async REST APIs, JSON responses, authentication, WebSockets, and Inertia support.
+Flaxon works with modern frontend frameworks through JSON APIs, browser-safe CORS
+configuration, authentication, and WebSockets.
 
 Supported Frontends:
 
@@ -9,7 +10,6 @@ Supported Frontends:
 - Angular
 - Svelte
 - Next.js
-- Inertia.js
 
 ---
 
@@ -311,94 +311,6 @@ return res.json();
 
 ---
 
-# 6. Inertia.js Integration
-
-Inertia allows Flaxon applications to use React, Vue, or Svelte without building separate APIs.
-
-Install:
-
-```bash
-pip install flaxon-inertia
-```
-
----
-
-## Backend Setup
-
-```python
-from flaxon import Flaxon
-from flaxon_inertia import InertiaPlugin
-
-
-app = Flaxon(
-"my-app"
-)
-
-
-app.plugins.load_plugin(
-    InertiaPlugin(
-        root_template=
-        "templates/app.html"
-    )
-)
-
-
-@app.get("/")
-async def home():
-
-    return inertia.render(
-        "Home",
-        {
-            "title":
-            "Welcome to Flaxon"
-        }
-    )
-```
-
----
-
-## Vue Inertia Page
-
-```vue
-<script setup>
-
-defineProps({
-title:String
-})
-
-</script>
-
-
-<template>
-
-<h1>
-{{title}}
-</h1>
-
-</template>
-```
-
----
-
-## React Inertia Page
-
-```jsx
-import {
-createInertiaApp
-}
-from "@inertiajs/react";
-
-
-createInertiaApp({
-
-resolve:name =>
-import(`./Pages/${name}`)
-
-});
-```
-
----
-
 # Authentication Support
 
 All frontend frameworks can use:
@@ -436,7 +348,7 @@ async def chat(socket):
 
     await socket.accept()
 
-    async for message in socket:
+async for message in socket.iter_json():
 
         await socket.send_json(
             {
@@ -465,6 +377,5 @@ Works with:
 | Angular | REST API + RxJS |
 | Svelte | REST API + Reactive State |
 | Next.js | REST API + SSR |
-| Inertia.js | Full-stack Python + JS |
 
 Flaxon can power modern frontend applications while keeping a Python-first backend architecture.

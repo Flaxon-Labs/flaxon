@@ -45,6 +45,10 @@ class WebSocketClient:
         self._receive_queue = asyncio.Queue()
         self._send_queue = asyncio.Queue()
 
+        # An ASGI WebSocket application waits for this handshake message before
+        # it can emit ``websocket.accept``.
+        await self._send_queue.put({"type": "websocket.connect"})
+
         async def receive() -> dict[str, Any]:
             if self._closed:
                 return {"type": "websocket.disconnect", "code": 1000}
@@ -66,10 +70,13 @@ class WebSocketClient:
     async def disconnect(self, code: int = 1000) -> None:
         self._closed = True
         if self._task:
-            self._task.cancel()
-            # FIX (SIM105): Use contextlib.suppress instead of try-except-pass
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._task
+            await self._send_queue.put({"type": "websocket.disconnect", "code": code})
+            try:
+                await asyncio.wait_for(asyncio.shield(self._task), timeout=1.0)
+            except TimeoutError:
+                self._task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._task
             self._task = None
 
     async def send_text(self, text: str) -> None:

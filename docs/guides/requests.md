@@ -298,16 +298,16 @@ from flaxon.validation import Schema, fields
 
 class CreateUser(Schema):
 
-    name = fields.String(
+    name = fields.StrField(
         required=True,
         min_length=2,
     )
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True,
     )
 
-    age = fields.Integer(
+    age = fields.IntField(
         minimum=13,
     )
 ```
@@ -451,9 +451,9 @@ app = Flaxon("request-demo")
 
 class CreateUser(Schema):
 
-    username = fields.String(required=True)
+    username = fields.StrField(required=True)
 
-    email = fields.Email(required=True)
+    email = fields.EmailField(required=True)
 
 @app.get("/users/<int:user_id>")
 async def get_user(

@@ -5,10 +5,11 @@ from flaxon.jinax import Jinax
 from flaxon.testing import TestClient
 
 
-def test_jinax_autoescape():
+def test_jinax_autoescape(tmp_path):
     app = Flaxon("test-xss")
+    (tmp_path / "test.html").write_text("{{ script }}", encoding="utf-8")
 
-    jinax = Jinax(template_dir="templates", auto_reload=True)
+    jinax = Jinax(template_directory=tmp_path, auto_reload=True)
     app.use_templates(jinax)
 
     @app.get("/")
@@ -24,10 +25,11 @@ def test_jinax_autoescape():
     assert "<script>alert('XSS')</script>" not in response.text
 
 
-def test_jinax_safe_filter():
+def test_jinax_safe_filter(tmp_path):
     app = Flaxon("test-safe")
+    (tmp_path / "test_safe.html").write_text("{{ safe_html }}{{ safe_html | safe }}{{ unsafe_html }}", encoding="utf-8")
 
-    jinax = Jinax(template_dir="templates", auto_reload=True)
+    jinax = Jinax(template_directory=tmp_path, auto_reload=True)
     app.use_templates(jinax)
 
     @app.get("/")
@@ -82,8 +84,8 @@ def test_xss_validation_schema():
     from flaxon.validation import Schema, fields
 
     class UserInput(Schema):
-        name = fields.String(required=True, max_length=80)
-        bio = fields.String(required=False, max_length=500)
+        name = fields.StrField(required=True, max_length=80)
+        bio = fields.StrField(required=False, max_length=500)
 
     data = {
         "name": "User<script>alert('XSS')</script>",

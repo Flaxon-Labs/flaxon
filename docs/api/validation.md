@@ -129,7 +129,7 @@ StrField(
 Example:
 
 ```python
-name = fields.String(
+name = fields.StrField(
     required=True,
     min_length=2,
     max_length=80
@@ -398,7 +398,7 @@ Example:
 
 ```python
 tags = fields.ListField(
-    fields.String(min_length=1),
+    fields.StrField(min_length=1),
     min_items=1,
     max_items=10
 )
@@ -424,12 +424,12 @@ Example:
 
 ```python
 class AddressSchema(Schema):
-    street = fields.String(required=True)
-    city = fields.String(required=True)
+    street = fields.StrField(required=True)
+    city = fields.StrField(required=True)
 
 
 class UserSchema(Schema):
-    name = fields.String(required=True)
+    name = fields.StrField(required=True)
     address = fields.NestedField(AddressSchema)
 ```
 
@@ -515,7 +515,7 @@ def validate_unique_email(value, field):
 
 
 class CreateUser(Schema):
-    username = fields.String(
+    username = fields.StrField(
         required=True,
         min_length=3,
         max_length=30,
@@ -528,14 +528,14 @@ class CreateUser(Schema):
         ],
     )
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True,
         validators=[
             custom_validator(validate_unique_email)
         ],
     )
 
-    password = fields.String(
+    password = fields.StrField(
         required=True,
         min_length=8,
         max_length=128,
@@ -553,7 +553,7 @@ class CreateUser(Schema):
     )
 
     tags = fields.ListField(
-        fields.String(min_length=1),
+        fields.StrField(min_length=1),
         max_items=10,
     )
 

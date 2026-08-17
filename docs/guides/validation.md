@@ -26,17 +26,17 @@ from flaxon.validation import Schema, fields
 
 class CreateUser(Schema):
 
-    name = fields.String(
+    name = fields.StrField(
         required=True,
         min_length=2,
         max_length=80
     )
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True
     )
 
-    age = fields.Integer(
+    age = fields.IntField(
         required=False,
         minimum=13,
         maximum=120
@@ -79,7 +79,7 @@ Invalid data automatically returns:
 ```python
 class UserSchema(Schema):
 
-    name = fields.String(
+    name = fields.StrField(
         required=True,
         min_length=2,
         max_length=80,
@@ -95,7 +95,7 @@ class UserSchema(Schema):
 ```python
 class ProductSchema(Schema):
 
-    price = fields.Integer(
+    price = fields.IntField(
         required=True,
         minimum=0,
         maximum=999999
@@ -109,7 +109,7 @@ class ProductSchema(Schema):
 ```python
 class PriceSchema(Schema):
 
-    amount = fields.Float(
+    amount = fields.FloatField(
         required=True,
         minimum=0.0,
         maximum=9999.99
@@ -123,11 +123,11 @@ class PriceSchema(Schema):
 ```python
 class SettingsSchema(Schema):
 
-    active = fields.Boolean(
+    active = fields.BoolField(
         required=True
     )
 
-    notifications = fields.Boolean(
+    notifications = fields.BoolField(
         default=True
     )
 ```
@@ -139,7 +139,7 @@ class SettingsSchema(Schema):
 ```python
 class StatusSchema(Schema):
 
-    status = fields.Choice(
+    status = fields.ChoiceField(
         [
             "pending",
             "active",
@@ -157,7 +157,7 @@ class StatusSchema(Schema):
 ```python
 class ContactSchema(Schema):
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True
     )
 ```
@@ -169,7 +169,7 @@ class ContactSchema(Schema):
 ```python
 class EventSchema(Schema):
 
-    date = fields.Date(
+    date = fields.DateField(
         required=True,
         format="%Y-%m-%d"
     )
@@ -182,7 +182,7 @@ class EventSchema(Schema):
 ```python
 class ScheduleSchema(Schema):
 
-    datetime = fields.DateTime(
+    datetime = fields.DateTimeField(
         required=True,
         format="%Y-%m-%dT%H:%M:%S"
     )
@@ -195,7 +195,7 @@ class ScheduleSchema(Schema):
 ```python
 class TokenSchema(Schema):
 
-    token = fields.UUID(
+    token = fields.UUIDField(
         required=True
     )
 ```
@@ -207,8 +207,8 @@ class TokenSchema(Schema):
 ```python
 class BulkCreateSchema(Schema):
 
-    users = fields.List(
-        item_field=fields.String(
+    users = fields.ListField(
+        item_field=fields.StrField(
             min_length=2
         ),
         min_items=1,
@@ -223,15 +223,15 @@ class BulkCreateSchema(Schema):
 ```python
 class AddressSchema(Schema):
 
-    street = fields.String(
+    street = fields.StrField(
         required=True
     )
 
-    city = fields.String(
+    city = fields.StrField(
         required=True
     )
 
-    zipcode = fields.String(
+    zipcode = fields.StrField(
         required=True,
         pattern=r"^\d{5}$"
     )
@@ -240,11 +240,11 @@ class AddressSchema(Schema):
 
 class UserSchema(Schema):
 
-    name = fields.String(
+    name = fields.StrField(
         required=True
     )
 
-    address = fields.Nested(
+    address = fields.NestedField(
         AddressSchema
     )
 ```
@@ -301,7 +301,7 @@ def validate_unique_email(value, field):
 
 class CreateUser(Schema):
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True,
         validators=[
             custom_validator(
@@ -325,7 +325,7 @@ from flaxon.validation.validators import (
 
 class UserSchema(Schema):
 
-    username = fields.String(
+    username = fields.StrField(
         validators=[
             and_validators(
                 length_validator(3, 20),
@@ -337,7 +337,7 @@ class UserSchema(Schema):
     )
 
 
-    contact = fields.String(
+    contact = fields.StrField(
         validators=[
             or_validators(
                 email_validator(),
@@ -374,9 +374,9 @@ async def get_user(user_id: int):
 ```python
 class UserSchema(Schema):
 
-    name = fields.String()
+    name = fields.StrField()
 
-    email = fields.Email()
+    email = fields.EmailField()
 
 
     def to_dict(self):
@@ -424,7 +424,7 @@ def validate_unique_username(value, field):
 
 class CreateUser(Schema):
 
-    username = fields.String(
+    username = fields.StrField(
         required=True,
         min_length=3,
         max_length=30,
@@ -437,26 +437,26 @@ class CreateUser(Schema):
     )
 
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True
     )
 
 
-    password = fields.String(
+    password = fields.StrField(
         required=True,
         min_length=8,
         max_length=128
     )
 
 
-    age = fields.Integer(
+    age = fields.IntField(
         required=False,
         minimum=13,
         maximum=120
     )
 
 
-    role = fields.Choice(
+    role = fields.ChoiceField(
         [
             "user",
             "moderator",
@@ -469,16 +469,16 @@ class CreateUser(Schema):
 
 class UpdateUser(Schema):
 
-    username = fields.String(
+    username = fields.StrField(
         min_length=3,
         max_length=30
     )
 
 
-    email = fields.Email()
+    email = fields.EmailField()
 
 
-    age = fields.Integer(
+    age = fields.IntField(
         minimum=13,
         maximum=120
     )

@@ -101,11 +101,11 @@ posts = []
 
 class LoginRequest(Schema):
 
-    email = fields.Email(
+    email = fields.EmailField(
         required=True
     )
 
-    password = fields.String(
+    password = fields.StrField(
         required=True
     )
 
@@ -113,11 +113,11 @@ class LoginRequest(Schema):
 
 class DeviceSchema(Schema):
 
-    device_id = fields.String(
+    device_id = fields.StrField(
         required=True
     )
 
-    platform = fields.Choice(
+    platform = fields.ChoiceField(
         [
             "android",
             "ios"
@@ -125,11 +125,11 @@ class DeviceSchema(Schema):
         required=True
     )
 
-    fcm_token = fields.String(
+    fcm_token = fields.StrField(
         required=True
     )
 
-    app_version = fields.String(
+    app_version = fields.StrField(
         required=False
     )
 

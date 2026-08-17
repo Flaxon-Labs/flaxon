@@ -72,7 +72,7 @@ Flaxon provides schema-based validation:
 
 ```python
 class CreateUser(Schema):
-    name = fields.String(required=True)
+    name = fields.StrField(required=True)
 ```
 
 ---
@@ -142,8 +142,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 ```python
 class UserSchema(Schema):
-    id = fields.Integer()
-    name = fields.String()
+    id = fields.IntField()
+    name = fields.StrField()
 ```
 
 ---
@@ -188,8 +188,8 @@ class User(BaseModel):
 
 ```python
 class User(Schema):
-    name = fields.String(required=True)
-    email = fields.Email(required=True)
+    name = fields.StrField(required=True)
+    email = fields.EmailField(required=True)
 ```
 
 ---

@@ -13,6 +13,7 @@ class Jinax:
         self,
         template_directory: str | Path = "templates",
         *,
+        template_dir: str | Path | None = None,
         auto_reload: bool = False,
         strict_undefined: bool = True,
         globals: dict[str, Any] | None = None,
@@ -24,6 +25,11 @@ class Jinax:
             raise RuntimeError(
                 "Jinax requires Jinja2. Install it with: pip install 'flaxon-framework[templates]'"
             ) from exc
+
+        if template_dir is not None:
+            if template_directory != "templates":
+                raise ValueError("Pass either template_directory or template_dir, not both")
+            template_directory = template_dir
 
         undefined = StrictUndefined if strict_undefined else Undefined
         self.environment = Environment(
