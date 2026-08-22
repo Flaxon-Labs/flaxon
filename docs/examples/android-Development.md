@@ -69,7 +69,7 @@ mobile = FlaxonMobilePlugin(
 )
 
 
-app.plugins.load_plugin(
+await app.plugins.load_plugin(
     mobile
 )
 

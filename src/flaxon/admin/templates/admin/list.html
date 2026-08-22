@@ -49,7 +49,7 @@
                     <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
                         {% for field in list_display %}
                         <td class="px-4 py-3 text-sm text-white">
-                            {{ item[field] if field in item else (item.__dict__[field] if field in item.__dict__ else '') }}
+                            {{ item[field] if (item is mapping and field in item) else (item.__dict__[field] if (item.__dict__ is defined and field in item.__dict__) else '') }}
                         </td>
                         {% endfor %}
                         <td class="px-4 py-3 text-sm text-right">

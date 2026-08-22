@@ -61,6 +61,15 @@ class Request:
         data = await self.body()
         return json.loads(data or b"null")
 
+    async def form(self) -> Any:
+        """Parse the request body as form data (urlencoded or multipart).
+
+        Returns a FormData instance (see flaxon.http.form.FormData).
+        """
+        from .form import FormData
+
+        return await FormData.from_request(self)
+
     async def render(self, template: str, context: dict[str, Any] | None = None) -> HTMLResponse:
         """Render a template using the application's configured engine."""
         if self.app is None or self.app.jinax is None:

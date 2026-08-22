@@ -240,7 +240,7 @@ import os
 from flaxon_ai import FlaxonAIPlugin
 
 
-app.plugins.load_plugin(
+await app.plugins.load_plugin(
     FlaxonAIPlugin(
         provider="gemini",
         api_key=os.environ.get(
@@ -286,12 +286,12 @@ app = Flaxon(
 )
 
 
-app.plugins.load_plugin(
+await app.plugins.load_plugin(
     DebugToolbarPlugin()
 )
 
 
-app.plugins.load_plugin(
+await app.plugins.load_plugin(
     FlaxonAIPlugin(
         provider="gemini",
         api_key=os.environ.get(

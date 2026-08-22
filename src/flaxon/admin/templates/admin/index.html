@@ -52,7 +52,7 @@
             {% if models %}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {% for model in models %}
-                <a href="{{ url_prefix }}/{{ model.get_name() }}" class="flex items-center gap-3 p-3 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition border border-slate-700/30 hover:border-slate-600/50">
+                <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/{{ model.get_name() }}" class="flex items-center gap-3 p-3 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition border border-slate-700/30 hover:border-slate-600/50">
                     <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-400/20 flex items-center justify-center text-blue-400">
                         <i class="fas fa-table"></i>
                     </div>

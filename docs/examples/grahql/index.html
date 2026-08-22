@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Flaxon GraphQL Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; }
+    button { padding: 8px 14px; margin: 4px 6px 12px 0; cursor: pointer; }
+    pre { background: #f4f4f4; padding: 12px; border-radius: 6px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Flaxon GraphQL Demo</h1>
+  <p>Backend: <code>http://127.0.0.1:8000/graphql</code>
+     &middot; Playground: <a href="http://127.0.0.1:8000/graphql/graphiql" target="_blank">GraphiQL</a></p>
+
+  <button id="btn-hello">Query: hello</button>
+  <button id="btn-users">Query: users + posts</button>
+  <button id="btn-create-user">Mutation: createUser</button>
+  <button id="btn-create-post">Mutation: createPost</button>
+
+  <pre id="output">Click a button to run a query.</pre>
+
+  <script>
+    const output = document.getElementById("output");
+
+    async function runQuery(query) {
+      output.textContent = "Loading...";
+      try {
+        const res = await fetch("http://127.0.0.1:8000/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+        });
+        const data = await res.json();
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        output.textContent = "Network error: " + err.message;
+      }
+    }
+
+    document.getElementById("btn-hello").addEventListener("click", () => {
+      runQuery('query { hello(name: "Flaxon") }');
+    });
+
+    document.getElementById("btn-users").addEventListener("click", () => {
+      runQuery('query { users { id name email posts { id title } } }');
+    });
+
+    // Note: no commas between arguments — this parser doesn't treat
+    // commas as insignificant whitespace like standard GraphQL does.
+    document.getElementById("btn-create-user").addEventListener("click", () => {
+      runQuery('mutation { createUser(name: "Bob" email: "bob@example.com") { id name email } }');
+    });
+
+    document.getElementById("btn-create-post").addEventListener("click", () => {
+      runQuery('mutation { createPost(title: "New Post" content: "GraphQL Example" authorId: 1) { id title author { name } } }');
+    });
+  </script>
+</body>
+</html>

@@ -65,7 +65,9 @@ class CreateView(AdminView):
         if self.request.method == "POST":
             # Extract form payload for model creation logic
             form_data = await self.request.form() if hasattr(self.request, "form") else {}
-            
+            if hasattr(form_data, "to_dict"):
+                form_data = form_data.to_dict()
+
             # Hook for model saving instance if supported by model manager
             model_class = self.admin_model.model
             if hasattr(model_class, "create_instance"):
@@ -98,6 +100,8 @@ class UpdateView(AdminView):
 
         if self.request.method == "POST":
             form_data = await self.request.form() if hasattr(self.request, "form") else {}
+            if hasattr(form_data, "to_dict"):
+                form_data = form_data.to_dict()
 
             if hasattr(model_class, "update_instance"):
                 result = model_class.update_instance(self.object_id, form_data)
