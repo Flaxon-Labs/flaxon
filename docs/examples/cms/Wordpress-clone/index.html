@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Tiny Blog</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+      background: #fdfdfb;
+      color: #222;
+    }
+    header { border-bottom: 3px solid #222; padding-bottom: 16px; margin-bottom: 28px; }
+    h1 { font-size: 2.2rem; margin: 0; letter-spacing: -0.5px; }
+    .tagline { color: #777; font-family: -apple-system, sans-serif; font-size: 0.9rem; margin-top: 4px; }
+    .status { display: flex; align-items: center; gap: 6px; font-family: -apple-system, sans-serif; font-size: 0.8rem; color: #888; margin-top: 10px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+    .dot.live { background: #2e9e4f; }
+
+    #composer {
+      background: #f4f2ec;
+      border: 1px solid #e2ddd0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 36px;
+      font-family: -apple-system, sans-serif;
+    }
+    #composer summary { cursor: pointer; font-weight: 600; font-size: 0.95rem; }
+    #composer input, #composer textarea {
+      width: 100%; margin-top: 10px; padding: 10px; font-family: inherit; font-size: 0.9rem;
+      border: 1px solid #d8d2c2; border-radius: 6px; background: #fff;
+    }
+    #composer textarea { min-height: 100px; resize: vertical; }
+    #composer button {
+      margin-top: 10px; padding: 9px 18px; border: none; border-radius: 6px;
+      background: #222; color: #fff; font-weight: 600; cursor: pointer; font-size: 0.85rem;
+    }
+    #composer button:hover { background: #444; }
+    #composer .error { color: #b3261e; font-size: 0.8rem; margin-top: 6px; }
+
+    article {
+      padding: 22px 0;
+      border-bottom: 1px solid #e6e2d6;
+      animation: fadeIn 0.5s ease;
+    }
+    article.new { animation: highlightIn 1.6s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes highlightIn {
+      0% { background: #fff6d8; }
+      100% { background: transparent; }
+    }
+    article h2 { font-size: 1.4rem; margin: 0 0 4px; }
+    article .meta { font-family: -apple-system, sans-serif; font-size: 0.78rem; color: #999; margin-bottom: 10px; }
+    article p { line-height: 1.6; margin: 0; }
+    article .delete {
+      font-family: -apple-system, sans-serif; font-size: 0.75rem; color: #bbb;
+      background: none; border: none; cursor: pointer; margin-top: 10px; padding: 0;
+    }
+    article .delete:hover { color: #b3261e; }
+
+    #empty { color: #999; font-family: -apple-system, sans-serif; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Tiny Blog</h1>
+    <div class="tagline">A small WordPress-style feed, powered by Flaxon WebSockets</div>
+    <div class="status"><span class="dot" id="live-dot"></span><span id="live-text">connecting...</span></div>
+  </header>
+
+  <details id="composer">
+    <summary>Write a new post</summary>
+    <form id="post-form">
+      <input type="text" id="title" placeholder="Title" required />
+      <input type="text" id="author" placeholder="Your name (optional)" />
+      <textarea id="content" placeholder="What's on your mind?" required></textarea>
+      <button type="submit">Publish</button>
+      <div class="error" id="form-error"></div>
+    </form>
+  </details>
+
+  <div id="feed"></div>
+  <div id="empty" style="display:none;">No posts yet — be the first to publish one.</div>
+
+  <script>
+    const feed = document.getElementById("feed");
+    const empty = document.getElementById("empty");
+    const dot = document.getElementById("live-dot");
+    const liveText = document.getElementById("live-text");
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function formatDate(iso) {
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    }
+
+    function renderPost(post, { highlight = false, prepend = false } = {}) {
+      const el = document.createElement("article");
+      el.dataset.id = post.id;
+      if (highlight) el.classList.add("new");
+      el.innerHTML = `
+        <h2>${escapeHtml(post.title)}</h2>
+        <div class="meta">by ${escapeHtml(post.author)} &middot; ${formatDate(post.created_at)}</div>
+        <p>${escapeHtml(post.content)}</p>
+        <button class="delete" data-id="${post.id}">Delete</button>
+      `;
+      el.querySelector(".delete").addEventListener("click", () => deletePost(post.id));
+      if (prepend) {
+        feed.prepend(el);
+      } else {
+        feed.appendChild(el);
+      }
+      empty.style.display = "none";
+    }
+
+    async function loadPosts() {
+      const res = await fetch("/api/posts");
+      const posts = await res.json();
+      feed.innerHTML = "";
+      if (posts.length === 0) {
+        empty.style.display = "block";
+      } else {
+        posts.forEach((p) => renderPost(p));
+      }
+    }
+
+    function removePost(id) {
+      const el = feed.querySelector(`article[data-id="${id}"]`);
+      if (el) el.remove();
+      if (!feed.children.length) empty.style.display = "block";
+    }
+
+    async function deletePost(id) {
+      await fetch(`/api/posts/${id}`, { method: "DELETE" });
+      // The WebSocket broadcast will remove it from every open tab, including this one.
+    }
+
+    document.getElementById("post-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value.trim();
+      const content = document.getElementById("content").value.trim();
+      const author = document.getElementById("author").value.trim();
+      const errorBox = document.getElementById("form-error");
+      errorBox.textContent = "";
+
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content, author }),
+      });
+
+      if (res.ok) {
+        document.getElementById("post-form").reset();
+        document.getElementById("composer").removeAttribute("open");
+        // No manual render here — the WebSocket broadcast adds it live,
+        // the same way it would for every other visitor's browser.
+      } else {
+        const err = await res.json();
+        errorBox.textContent = err.error || "Something went wrong.";
+      }
+    });
+
+    // --- Live feed via Flaxon WebSocket ---
+    function connect() {
+      const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+      const ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+      ws.onopen = () => {
+        dot.classList.add("live");
+        liveText.textContent = "live";
+      };
+
+      ws.onclose = () => {
+        dot.classList.remove("live");
+        liveText.textContent = "reconnecting...";
+        setTimeout(connect, 1500);
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "new_post") {
+          renderPost(msg.post, { highlight: true, prepend: true });
+        } else if (msg.type === "delete_post") {
+          removePost(msg.id);
+        }
+      };
+    }
+
+    loadPosts();
+    connect();
+  </script>
+</body>
+</html>
