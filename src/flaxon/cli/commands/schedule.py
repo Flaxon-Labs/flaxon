@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from typing import Any
 
 from ..base import Command
 
@@ -34,13 +35,29 @@ class ScheduleCommand(Command):
             queue = TaskQueue()
             scheduler = Scheduler(queue)
 
-            console.info("Scheduler started. Press Ctrl+C to stop.")
+            async def run_once() -> None:
+                console.info("Running one scheduling pass...")
+                await scheduler.run_once()
+
+            async def run_forever() -> None:
+                await scheduler.start()
+                console.info("Scheduler started. Press Ctrl+C to stop.")
+                try:
+                    # start() only spawns the background loop and returns
+                    # immediately, so something has to keep this coroutine
+                    # (and therefore the event loop) alive until Ctrl+C.
+                    while True:
+                        await asyncio.sleep(3600)
+                finally:
+                    await scheduler.stop()
 
             try:
-                asyncio.run(scheduler.start())
+                if args.once:
+                    asyncio.run(run_once())
+                else:
+                    asyncio.run(run_forever())
             except KeyboardInterrupt:
                 console.info("\nShutting down scheduler...")
-                asyncio.run(scheduler.stop())
 
             return 0
 

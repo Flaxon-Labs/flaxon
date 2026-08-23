@@ -40,7 +40,11 @@ class WorkerCommand(Command):
             console.info("Worker started. Press Ctrl+C to stop.")
 
             try:
+                # Worker installs its own SIGINT/SIGTERM handler and shuts
+                # itself down internally, so start() usually just returns
+                # normally on Ctrl+C rather than raising KeyboardInterrupt.
                 asyncio.run(worker.start())
+                console.info("\nWorker stopped.")
             except KeyboardInterrupt:
                 console.info("\nShutting down worker...")
                 asyncio.run(worker.stop())

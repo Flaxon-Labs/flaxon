@@ -35,7 +35,9 @@ class Generator:
 
         filename = filename_map.get(type, f"{name}.py")
 
-        template_content = self.templates.render(f"{type}.py", {"name": name})
+        template_content = self.templates.render(
+            f"{type}.py", {"name": name, "name_capitalize": name.capitalize()}
+        )
         path = Path(filename)
 
         if path.exists():

@@ -34,7 +34,7 @@ class ShellCommand(Command):
                 console.warning(f"Could not load application: {exc}")
 
         console.info("Starting Flaxon shell...")
-        console.info("Available context:", context.keys() if context else "None")
+        console.info(f"Available context: {list(context.keys()) if context else 'None'}")
 
         code.interact(local=context)
         return 0

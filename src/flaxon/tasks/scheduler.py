@@ -61,25 +61,28 @@ class Scheduler:
 
     async def _run(self) -> None:
         while self._running:
-            now = datetime.datetime.now()
-            to_run = []
-
-            for item in self._scheduled_tasks[:]:
-                if item["next_run"] <= now:
-                    to_run.append(item)
-                    if item["interval"]:
-                        item["next_run"] += datetime.timedelta(
-                            seconds=item["interval"]
-                        )
-                    else:
-                        self._scheduled_tasks.remove(item)
-
-            for item in to_run:
-                # FIX (SIM105): Use contextlib.suppress instead of try...except pass
-                with contextlib.suppress(TaskError):
-                    await self.queue.push(item["task"])
-
+            await self.run_once()
             await asyncio.sleep(1)
+
+    async def run_once(self) -> None:
+        """Run a single scheduling pass: push any due tasks onto the queue."""
+        now = datetime.datetime.now()
+        to_run = []
+
+        for item in self._scheduled_tasks[:]:
+            if item["next_run"] <= now:
+                to_run.append(item)
+                if item["interval"]:
+                    item["next_run"] += datetime.timedelta(
+                        seconds=item["interval"]
+                    )
+                else:
+                    self._scheduled_tasks.remove(item)
+
+        for item in to_run:
+            # FIX (SIM105): Use contextlib.suppress instead of try...except pass
+            with contextlib.suppress(TaskError):
+                await self.queue.push(item["task"])
 
 
 def scheduled_task(
