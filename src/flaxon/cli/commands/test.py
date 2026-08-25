@@ -37,11 +37,33 @@ class TestCommand(Command):
         console.info(f"Running: {' '.join(cmd)}")
 
         try:
-            result = subprocess.run(cmd, env=None if args.keep_env else None)
-            return result.returncode
+            result = subprocess.run(cmd)
+            returncode = result.returncode
         except FileNotFoundError:
             console.error("pytest is not installed. Run: pip install pytest")
             return 1
         except KeyboardInterrupt:
             console.info("\nTests interrupted")
             return 1
+
+        if not args.keep_env:
+            self._cleanup_test_artifacts(console)
+
+        return returncode
+
+    def _cleanup_test_artifacts(self, console: Any) -> None:
+        import shutil
+        from pathlib import Path
+
+        removed = []
+        for name in (".pytest_cache", ".coverage", "htmlcov"):
+            target = Path(name)
+            if target.exists():
+                if target.is_dir():
+                    shutil.rmtree(target, ignore_errors=True)
+                else:
+                    target.unlink(missing_ok=True)
+                removed.append(name)
+
+        if removed:
+            console.info(f"Cleaned up test artifacts: {', '.join(removed)} (use --keep-env to preserve)")

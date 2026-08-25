@@ -31,7 +31,7 @@ class GenerateCommand(Command):
             if args.type == "model":
                 self._generate_model(args.name, path)
             else:
-                generator.generate_component(args.type, args.name)
+                generator.generate_component(args.type, args.name, path)
 
             console.success(f"Generated {args.type}: {args.name}")
             return 0
@@ -46,5 +46,6 @@ class GenerateCommand(Command):
     created_at = fields.DateTime()
     updated_at = fields.DateTime()
 '''
+        path.mkdir(parents=True, exist_ok=True)
         file_path = path / f"{name}_model.py"
         file_path.write_text(template, encoding="utf-8")

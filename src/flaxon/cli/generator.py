@@ -25,7 +25,7 @@ class Generator:
         readme = self.templates.render("README.md", {"name": directory.name})
         (directory / "README.md").write_text(readme, encoding="utf-8")
 
-    def generate_component(self, type: str, name: str) -> None:
+    def generate_component(self, type: str, name: str, path: str | Path = ".") -> None:
         filename_map = {
             "controller": f"{name}_controller.py",
             "schema": f"{name}_schema.py",
@@ -38,12 +38,14 @@ class Generator:
         template_content = self.templates.render(
             f"{type}.py", {"name": name, "name_capitalize": name.capitalize()}
         )
-        path = Path(filename)
+        directory = Path(path)
+        directory.mkdir(parents=True, exist_ok=True)
+        full_path = directory / filename
 
-        if path.exists():
-            raise FileExistsError(f"File '{filename}' already exists")
+        if full_path.exists():
+            raise FileExistsError(f"File '{full_path}' already exists")
 
-        path.write_text(template_content, encoding="utf-8")
+        full_path.write_text(template_content, encoding="utf-8")
 
     def generate_from_string(self, template: str, context: dict[str, Any]) -> str:
         return self.templates.render_string(template, context)

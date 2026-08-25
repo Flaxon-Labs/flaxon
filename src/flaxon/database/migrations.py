@@ -176,7 +176,7 @@ class MigrationRunner:
 
         return {
             "applied_count": len(applied),
-            "pending_count": len(available) - len(applied),
+            "pending_count": sum(1 for m in available if m.version not in applied),
             "migrations": statuses,
         }
 

@@ -30,6 +30,7 @@ class DoctorCommand(Command):
 
         warnings = []
         failures = []
+        weak_secret_key = False
 
         console.info(f"Flaxon Doctor - {app.name}")
 
@@ -42,6 +43,7 @@ class DoctorCommand(Command):
 
         if app.config.get("SECRET_KEY") in {None, "", "change-me", "change-this-in-production"}:
             warnings.append("A strong production SECRET_KEY is not configured.")
+            weak_secret_key = True
 
         seen = set()
         for route in app.router.routes:
@@ -58,8 +60,36 @@ class DoctorCommand(Command):
 
         console.info(f"Result: {len(warnings)} warning(s), {len(failures)} failure(s)")
 
-        if failures and args.fix:
-            console.info("Attempting to fix issues...")
-            # Fix logic would go here
+        if args.fix:
+            if weak_secret_key:
+                self._fix_secret_key(console)
+            elif not (warnings or failures):
+                console.info("Nothing to fix.")
+
+            if failures:
+                console.warning(
+                    "Duplicate routes can't be fixed automatically -- "
+                    "edit your route definitions to remove the conflict."
+                )
 
         return 1 if failures else 0
+
+    def _fix_secret_key(self, console: Any) -> None:
+        import secrets
+        from pathlib import Path
+
+        env_path = Path(".env")
+        existing = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+
+        if any(line.strip().startswith("SECRET_KEY=") for line in existing.splitlines()):
+            console.info(".env already defines SECRET_KEY -- leaving it as is.")
+            return
+
+        new_key = secrets.token_urlsafe(48)
+        with env_path.open("a", encoding="utf-8") as f:
+            if existing and not existing.endswith("\n"):
+                f.write("\n")
+            f.write(f"SECRET_KEY={new_key}\n")
+
+        console.success(f"Generated a SECRET_KEY and wrote it to {env_path}")
+        console.info("Load it with: flaxon run app:app --env-file .env")
