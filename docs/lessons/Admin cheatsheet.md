@@ -1,126 +1,213 @@
-# Admin Panel Cheat Sheet
+# Admin and CMS Cheat Sheet
 
-Everything the admin dashboard offers — what's fully functional, and what's registered but not yet wired to real behavior (marked clearly below, so you don't lose time debugging something that was never connected).
+Current quick reference for Flaxon's model admin and CMS. For full
+production guidance, see [Admin and CMS Production Guide](../guides/admin-cms.md).
 
-## Setup
+## Mount Both Panels
 
 ```python
-admin = app.enable_admin(
-    url_prefix="/admin",        # default
-    config=AdminConfig(site_title="My Admin"),
-    template_dir=None,          # None = built-in theme; pass a path to override
+from flaxon import Flaxon
+from flaxon.admin import AdminConfig, AdminDashboard
+from flaxon.admin.cms import CMS
+
+app = Flaxon("backoffice", debug=True)
+admin = AdminDashboard(
+    app,
+    config=AdminConfig(site_title="Acme Backoffice", timezone="UTC"),
+    url_prefix="/admin",
+    storage_path="var/admin.sqlite3",
+    users=[{"username": "admin", "password": "change-me"}],
 )
+cms = CMS(app, url_prefix="/admin/cms", title="Acme Content", auth=admin.auth)
 ```
 
-## Registering a model — every option
+Run locally:
+
+```bash
+flaxon run app:app --reload
+```
+
+Open `/admin/login`, `/admin/`, and `/admin/cms/`. Use `database=` instead of
+`storage_path` when the project owns the database connection.
+
+## Persist and Migrate
 
 ```python
-admin.register(
-    Product,
-    name="products",                    # URL slug override (default: class name, lowercased)
-    list_display=["name", "price"],     # columns shown on the list page
-    list_filter=["category"],           # stored, not yet functional -- see below
-    search_fields=["name"],             # stored, not yet functional -- see below
-    fields=["name", "price"],           # fields shown on add/edit forms
-    readonly_fields=["created_at"],     # shown but not editable on the edit form
-    ordering=["-created_at"],           # stored on the model, not yet applied automatically
-    icon="box",                         # for your own custom sidebar/template use
+from flaxon.admin import write_admin_migration
+write_admin_migration("migrations")
+```
+
+```bash
+flaxon migrate --database sqlite://./app.db --migrations-dir migrations
+```
+
+Never use default in-memory state for production or multiple workers. Use a
+shared database or durable `storage_path`; use Redis for shared session/event
+broadcasting when configured in the application.
+
+## Register a Model
+
+```python
+from flaxon.admin import admin_model
+
+@admin_model(
+    list_display=["id", "name", "price"],
+    list_filter=["active"],
+    search_fields=["name", "sku"],
+    fields=["name", "sku", "price", "active"],
+    readonly_fields=["created_at"],
 )
-```
-
-Or via decorator, registering to the default global registry instead of a specific app instance:
-```python
-from flaxon.admin.decorators import admin_model
-
-@admin_model(list_display=["name"])
 class Product:
-    ...
+    @classmethod
+    async def get_instances(cls): ...
+    @classmethod
+    async def get_instance(cls, id): ...
+    @classmethod
+    async def create_instance(cls, data): ...
+    @classmethod
+    async def update_instance(cls, id, data): ...
+    @classmethod
+    async def delete_instance(cls, id): ...
 ```
 
-## The CRUD data hooks — this is what actually makes it work
-
-Implement any of these five as `@staticmethod`s (sync or async, both work) on the class you register. Every one is optional; the admin just does nothing for the operations you don't implement.
+The five CRUD hooks may be sync or async. Register on a dashboard instead when
+you need an explicit registry:
 
 ```python
-class Product:
-    @staticmethod
-    def get_instances(): ...                    # list page
-    @staticmethod
-    def get_instance(object_id): ...             # detail/edit page
-    @staticmethod
-    def create_instance(form_data): ...           # add form submit
-    @staticmethod
-    def update_instance(object_id, form_data): ... # edit form submit
-    @staticmethod
-    def delete_instance(object_id): ...            # delete confirm
+admin.register(Product, list_display=["name"], search_fields=["name"])
 ```
 
-Full runnable example with an in-memory store — [see the admin guide](admin.md#a-complete-working-example).
+## Model URLs and Controls
 
-## URLs generated per model
-
+```text
+/admin/                         dashboard
+/admin/<model>                  list, search, filters, sorting, pagination
+/admin/<model>/add              create form
+/admin/<model>/<id>              detail
+/admin/<model>/<id>/edit        update form
+/admin/<model>/<id>/delete      delete confirmation
+/admin/<model>/<id>/history     audit history
+/admin/<model>/actions/<name>   bulk action
+/admin/search?q=...             global model search
 ```
-GET  /admin/<model>              list
-GET  /admin/<model>/add          add form
-POST /admin/<model>/add          create
-GET  /admin/<model>/<id>         detail
-GET  /admin/<model>/<id>/edit    edit form
-POST /admin/<model>/<id>/edit    update
-GET  /admin/<model>/<id>/delete  delete confirm
-POST /admin/<model>/<id>/delete  delete
-```
 
-## Bulk actions — registered, but no way to trigger them yet
+The dashboard also provides `/users`, `/roles`, `/media`, `/settings`,
+`/activity`, `/activity/export`, `/notifications`, and `/operations`.
+
+## Custom Bulk Actions
+
+Actions receive selected record IDs. Attach them to the registered model:
 
 ```python
-admin_model_instance = admin.registry.get("product")
-admin_model_instance.add_action("mark_featured", some_function)
-admin_model_instance.get_actions()  # -> {"mark_featured": some_function}
+async def archive(ids):
+    for record_id in ids:
+        await Product.update_instance(record_id, {"active": False})
+
+admin.registry.get("product").add_action("archive", archive)
 ```
-or the decorator form:
-```python
-from flaxon.admin.decorators import admin_action
 
-@admin_action("mark_featured")
-def mark_featured(request, selected_ids): ...
-```
-**Both register the action correctly, but there's currently no route or UI control that actually calls it.** If you build on this, you'd need to add your own POST route reading `request.form()["action"]` and looking it up via `get_actions()` yourself.
+The list UI submits selected IDs to the action route. Keep authorization and
+business validation in the service called by the action.
 
-## Custom column display — registered, but not read by anything
+## Permissions
 
-```python
-from flaxon.admin.decorators import admin_display
-
-@admin_display("Full Name")
-def full_name(self): return f"{self.first} {self.last}"
-```
-Sets `._admin_display`/`._admin_header` on the function, but the list template doesn't currently look for or call these — `list_display` column values come from raw attribute access, not this decorator.
-
-## Search & filtering — metadata only, not applied
-
-`list_filter` and `search_fields` are stored on the model and passed to the list template as context, but `get_instances()` is called with no filter/search arguments — nothing in the admin currently reads a search box or filter dropdown and narrows the results. If you need working search/filter, implement it yourself inside your own `get_instances()`, reading from `request.query`.
-
-## Exceptions
+Built-in permissions include `admin:read`, `admin:write`, `admin:users`,
+`admin:media`, `admin:settings`, and `admin:superuser`. Model permissions use
+`<model>:create`, `<model>:read`, `<model>:update`, and `<model>:delete`.
 
 ```python
-from flaxon.admin.exceptions import AdminError, ModelNotFoundError, PermissionDeniedError, ValidationError
+admin.roles["publisher"] = [
+    "admin:read", "admin:write", "post:read", "post:update",
+]
+admin.auth.role_permissions = admin.roles
 ```
-Available for you to raise from your own hooks; nothing in the admin core raises these automatically yet.
 
-## Templates you can override
+Do not give editors `admin:superuser`. The role editor and user editor expose
+the same changes through the UI.
 
-`base.html` `index.html` `list.html` `detail.html` `add.html` `edit.html` `delete.html` — every one gets a `dashboard` variable (the `AdminDashboard` instance) and `models` variable (everything registered) automatically.
+## CMS Schema
 
-## Quick reference: what's real vs. scaffolding
+```python
+from flaxon.admin.cms import CMSField, ContentType
 
-| Feature | Status |
-|---|---|
-| List / detail / add / edit / delete pages | ✅ Fully functional |
-| CRUD data hooks (`get_instances` etc.) | ✅ Fully functional |
-| `list_display` columns | ✅ Functional |
-| `readonly_fields` on edit form | ✅ Functional |
-| Custom `template_dir` | ✅ Functional |
-| `list_filter` / `search_fields` | ⚠️ Stored, not applied |
-| Bulk `admin_action`s | ⚠️ Registered, no trigger route |
-| `admin_display` custom columns | ⚠️ Decorator sets attrs nothing reads |
-| `ordering` | ⚠️ Stored, not auto-applied |
+cms.register(ContentType(
+    name="post",
+    fields=[
+        CMSField("title", required=True),
+        CMSField("body", type="richtext"),
+        CMSField("hero", type="image"),
+        CMSField("published_on", type="datetime"),
+        CMSField("related", type="relationship"),
+        CMSField("blocks", type="repeater"),
+        CMSField("seo", type="json"),
+    ],
+    list_display=["title", "status", "updated_at"],
+    list_filter=["status"],
+    search_fields=["title", "body"],
+    statuses=["draft", "review", "approved", "scheduled", "published", "archived"],
+))
+```
+
+Field types: `text`, `textarea`, `richtext`, `boolean`, `number`, `date`,
+`datetime`, `email`, `url`, `select`, `json`, `repeater`, `relationship`,
+`file`, and `image`.
+
+The SPA supports autosave, unsaved-change warnings, media workflows, revision
+comparison/restore, scheduling, bulk publish/unpublish, taxonomy, comments,
+menus, and CSV/JSON import/export.
+
+## CMS API Shortcuts
+
+```text
+GET    /admin/cms/api/config
+GET    /admin/cms/api/stats
+GET    /admin/cms/api/post/items?q=hello&filter_status=draft&page=1
+POST   /admin/cms/api/post/items
+PUT    /admin/cms/api/post/items/<id>
+DELETE /admin/cms/api/post/items/<id>
+GET    /admin/cms/api/post/items/<id>/history
+POST   /admin/cms/api/post/items/<id>/restore/<revision>
+POST   /admin/cms/api/post/actions/publish
+GET    /admin/cms/api/export/post?format=csv
+POST   /admin/cms/api/import/post
+GET/POST /admin/cms/api/taxonomies
+GET/POST /admin/cms/api/comments
+GET/PUT /admin/cms/api/menus/main
+```
+
+Every mutation requires an authenticated session and the `X-CSRF-Token`
+header. Custom clients must send cookies with `credentials: "same-origin"`.
+
+## Hooks and Widgets
+
+```python
+def validate_post(record):
+    if not record.get("title", "").strip():
+        raise ValueError("Title is required")
+    return record
+
+cms.add_hook("before_create", validate_post)
+admin.register_widget(lambda: {"title": "Queue", "value": "ready"})
+```
+
+Available CMS lifecycle hooks include `before_create`, `after_create`,
+`before_update`, `after_update`, `before_delete`, `after_delete`, and restore
+hooks. Use a custom `AuthenticationBackend`, `template_dir`, or `template_path`
+when integrating with an existing application shell.
+
+## Security Rules
+
+- Keep CSRF enabled on all browser forms and SPA writes.
+- Use HTTPS, strong secrets, login throttling, and MFA in production.
+- Configure password reset and optional email verification senders.
+- Restrict upload MIME types and maximum size; use durable object storage.
+- Keep rich-text sanitization enabled with the smallest required allowlist.
+- Treat imported CSV/JSON and public comments as untrusted input.
+- Use shared sessions and Redis events for multiple workers.
+
+## Test the Workflow
+
+Test login, permissions, create/edit/delete, revision restore, media upload,
+moderation, scheduled publishing, import/export, and menu persistence through
+both API tests and browser automation. The complete runnable example is
+`docs/examples/cms/full_admin_cms/app.py`.

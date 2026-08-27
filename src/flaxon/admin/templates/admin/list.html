@@ -24,10 +24,15 @@
     <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
         <div class="flex flex-col sm:flex-row gap-3">
             <div class="flex-1">
-                <input type="text" placeholder="Search..." class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
+                <input name="q" value="{{ query }}" form="model-search" type="text" placeholder="Search..." class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
+                <form id="model-search" method="get" action="{{ prefix }}/{{ model.get_name() }}"></form>
             </div>
+            {% for filter_field in list_filter or [] %}<select name="filter_{{ filter_field }}" form="model-search" class="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white"><option value="">All {{ filter_field|replace('_',' ')|title }}</option>{% for item in objects or [] %}{% set filter_value = item.get(filter_field, '') if item is mapping else item.__dict__.get(filter_field, '') %}{% if filter_value != '' %}<option value="{{ filter_value }}">{{ filter_value }}</option>{% endif %}{% endfor %}</select>{% endfor %}
+            <button type="submit" form="model-search" class="px-3 py-2 bg-slate-700 rounded-lg text-sm">Filter</button>
         </div>
     </div>
+
+    <form id="bulk-form" method="post" action="{{ prefix }}/{{ model.get_name() }}/actions/delete" onsubmit="return confirm('Apply this action to the selected records?')" class="flex items-center gap-2"><select name="action" onchange="this.form.action='{{ prefix }}/{{ model.get_name() }}/actions/' + this.value" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm"><option value="delete">Delete selected</option>{% for name, action in actions.items() %}{% if name != 'delete' %}<option value="{{ name }}">{{ name|title }}</option>{% endif %}{% endfor %}</select><button class="px-3 py-2 bg-slate-700 rounded text-sm">Apply</button></form>
 
     <!-- Table -->
     <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden">
@@ -35,9 +40,10 @@
             <table class="w-full">
                 <thead>
                     <tr class="border-b border-slate-700/50">
+                        <th class="px-4 py-3"></th>
                         {% for field in list_display %}
                         <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                            {{ field|replace('_', ' ')|title }}
+                            <a href="{{ prefix }}/{{ model.get_name() }}?q={{ query }}&order_by={{ field }}">{{ field|replace('_', ' ')|title }}</a>
                         </th>
                         {% endfor %}
                         <th class="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Actions</th>
@@ -47,6 +53,7 @@
                     {% for item in objects or [] %}
                     {% set item_id = item.id if item.id is defined else (item['id'] if item['id'] is defined else loop.index) %}
                     <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                        <td class="px-4 py-3"><input type="checkbox" name="ids" value="{{ item_id }}" form="bulk-form"></td>
                         {% for field in list_display %}
                         <td class="px-4 py-3 text-sm text-white">
                             {{ item[field] if (item is mapping and field in item) else (item.__dict__[field] if (item.__dict__ is defined and field in item.__dict__) else '') }}
@@ -70,7 +77,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="{{ (list_display|length) + 1 }}" class="px-4 py-8 text-center text-slate-400 text-sm">
+                        <td colspan="{{ (list_display|length) + 2 }}" class="px-4 py-8 text-center text-slate-400 text-sm">
                             No records found.
                         </td>
                     </tr>
@@ -79,5 +86,6 @@
             </table>
         </div>
     </div>
+    {% if pagination.pages > 1 %}<nav class="flex gap-2 text-sm">{% for n in range(1, pagination.pages + 1) %}<a href="{{ prefix }}/{{ model.get_name() }}?q={{ query }}&page={{ n }}" class="px-3 py-1 rounded {% if n == pagination.page %}bg-blue-600{% else %}bg-slate-700{% endif %}">{{ n }}</a>{% endfor %}</nav>{% endif %}
 </div>
 {% endblock %}

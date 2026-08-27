@@ -15,6 +15,8 @@ class AdminConfig:
         logo_url: str | None = None,
         custom_styles: str | None = None,
         custom_scripts: str | None = None,
+        timezone: str = "UTC",
+        settings: dict[str, Any] | None = None,
     ) -> None:
         self.site_title = site_title
         self.site_header = site_header
@@ -27,6 +29,8 @@ class AdminConfig:
         self.logo_url = logo_url
         self.custom_styles = custom_styles
         self.custom_scripts = custom_scripts
+        self.timezone = timezone
+        self.settings = dict(settings or {})
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -41,4 +45,6 @@ class AdminConfig:
             "logo_url": self.logo_url,
             "custom_styles": self.custom_styles,
             "custom_scripts": self.custom_scripts,
+            "timezone": self.timezone,
+            "settings": self.settings,
         }

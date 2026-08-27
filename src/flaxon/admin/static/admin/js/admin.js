@@ -105,12 +105,21 @@
     // ============================================================
     // DARK MODE TOGGLE (Global)
     // ============================================================
-    function toggleDarkMode() {
-        const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('admin-dark-mode', isDark);
+    function applyAdminTheme(isDark) {
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.classList.toggle('light', !isDark);
+        document.body.classList.toggle('theme-dark', isDark);
+        document.body.classList.toggle('theme-light', !isDark);
+        localStorage.setItem('admin-dark-mode', String(isDark));
+        window.dispatchEvent(new CustomEvent('flaxon-theme-change', { detail: { dark: isDark } }));
         return isDark;
     }
 
+    function toggleDarkMode() {
+        return applyAdminTheme(!document.documentElement.classList.contains('dark'));
+    }
+
+    window.applyAdminTheme = applyAdminTheme;
     window.toggleDarkMode = toggleDarkMode;
 
     // ============================================================

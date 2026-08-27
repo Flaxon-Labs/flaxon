@@ -1,5 +1,9 @@
 # CMS Example
 
+> This older example is retained for compatibility. Use the complete editable
+> reference at [full_admin_cms/app.py](../full_admin_cms/app.py) and follow the
+> [production guide](../../../guides/admin-cms.md) for current APIs.
+
 This example demonstrates the CMS panel — a small, self-contained,
 WordPress/Django-admin-style content manager that ships as two files
 (`cms.py` + `cms.html`). It's an optional add-on, independent of

@@ -9,6 +9,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/admin/css/admin.css?v=20260827-2">
 
   <style>
     body { font-family: 'Inter', sans-serif; }
@@ -17,7 +18,7 @@
     [x-cloak] { display: none !important; }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
+<body class="bg-slate-900 text-slate-100 min-h-screen cms-shell">
 
   <div x-data="cmsApp()" x-init="init()" x-cloak class="min-h-screen">
 
@@ -29,7 +30,11 @@
           <span class="font-semibold text-lg" x-text="title"></span>
         </div>
         <div class="flex items-center gap-4 text-sm text-slate-400">
-          <a href="/admin" class="hover:text-slate-200 transition"><i class="fa-solid fa-arrow-left mr-1"></i> Back to Admin</a>
+          <a href="/admin/" class="hover:text-slate-200 transition"><i class="fa-solid fa-arrow-left mr-1"></i> Back to Admin</a>
+          <button @click="openResource('comments')" class="hover:text-slate-200 transition"><i class="fa-solid fa-comments mr-1"></i> Comments</button>
+          <button @click="openResource('taxonomies')" class="hover:text-slate-200 transition"><i class="fa-solid fa-tags mr-1"></i> Taxonomies</button>
+          <button @click="openResource('menu')" class="hover:text-slate-200 transition"><i class="fa-solid fa-list mr-1"></i> Menus</button>
+          <button @click="toggleTheme()" title="Toggle theme" aria-label="Toggle theme" class="hover:text-slate-200 transition"><i class="fa-solid" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i></button>
         </div>
       </div>
     </nav>
@@ -88,6 +93,8 @@
             <button @click="openCreate(currentType.name)" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition">
               <i class="fa-solid fa-plus mr-1"></i> Add <span x-text="currentType.label"></span>
             </button>
+            <div class="flex gap-2"><a :href="exportUrl('json')" class="px-3 py-2 rounded-lg bg-slate-700 text-sm">Export JSON</a><a :href="exportUrl('csv')" class="px-3 py-2 rounded-lg bg-slate-700 text-sm">Export CSV</a></div>
+            <label class="px-3 py-2 rounded-lg bg-slate-700 text-sm cursor-pointer">Import<input type="file" accept=".json,.csv" @change="importFile($event)" class="hidden"></label>
           </div>
 
           <!-- Toolbar -->
@@ -107,7 +114,7 @@
               >
                 <option value="">All <span x-text="filterField"></span></option>
                 <template x-if="filterField === 'status'">
-                  <template x-for="opt in ['draft','published']" :key="opt">
+                  <template x-for="opt in (currentType.statuses || ['draft','published'])" :key="opt">
                     <option :value="opt" x-text="opt"></option>
                   </template>
                 </template>
@@ -181,12 +188,21 @@
       </template>
 
       <!-- ============== FORM VIEW (create/edit) ============== -->
+      <template x-if="view === 'resource'">
+        <div class="space-y-6">
+          <div class="flex items-center justify-between"><div><button @click="goHome()" class="text-sm text-slate-400 hover:text-white">Back to CMS</button><h1 class="text-2xl font-bold capitalize" x-text="resource"></h1></div></div>
+          <template x-if="resource === 'comments'"><div class="space-y-2"><template x-for="comment in resourceItems" :key="comment.id"><article class="bg-slate-800/60 border border-slate-700 rounded-lg p-4 flex items-center justify-between gap-4"><div><p x-text="comment.content || comment.body || 'Comment'"></p><p class="text-xs text-slate-400" x-text="comment.created_at + ' · ' + comment.status"></p></div><div class="flex gap-2"><button @click="moderateComment(comment.id,'approved')" class="px-3 py-1 bg-emerald-700 rounded text-xs">Approve</button><button @click="moderateComment(comment.id,'spam')" class="px-3 py-1 bg-amber-700 rounded text-xs">Spam</button><button @click="moderateComment(comment.id,'rejected')" class="px-3 py-1 bg-red-700 rounded text-xs">Reject</button></div></article></template></div></template>
+          <template x-if="resource === 'taxonomies'"><div class="space-y-4"><form @submit.prevent="createTaxonomy()" class="flex gap-2"><input x-model="taxonomyName" required placeholder="New taxonomy name" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2"><button class="px-3 py-2 bg-indigo-600 rounded">Create</button></form><template x-for="(terms,name) in resourceItems" :key="name"><section class="bg-slate-800/60 border border-slate-700 rounded-lg p-4"><div class="flex items-center justify-between"><h2 class="font-semibold" x-text="name"></h2><button @click="deleteTaxonomy(name)" class="text-red-400 text-sm">Delete taxonomy</button></div><div class="mt-3 flex gap-2"><input x-model="taxonomyTerm" placeholder="Add category or tag" class="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2"><button @click="addTaxonomyTerm(name)" class="px-3 py-2 bg-slate-700 rounded">Add term</button></div><p class="mt-3 text-sm text-slate-400" x-text="Object.keys(terms || {}).join(', ') || 'No terms yet.'"></p></section></template></div></template>
+          <template x-if="resource === 'menu'"><div class="space-y-3"><p class="text-sm text-slate-400">Arrange navigation items and save their hierarchy.</p><template x-for="(item,index) in resourceItems" :key="index"><div draggable="true" class="flex gap-2 items-center"><i class="fa-solid fa-grip-vertical text-slate-500"></i><input x-model="resourceItems[index].label" placeholder="Label" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2"><input x-model="resourceItems[index].url" placeholder="URL" class="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2"><button @click="moveMenuItem(index,-1)" class="px-2 bg-slate-700 rounded" title="Move up">↑</button><button @click="moveMenuItem(index,1)" class="px-2 bg-slate-700 rounded" title="Move down">↓</button><button @click="resourceItems.splice(index,1)" class="px-3 bg-red-700 rounded">Delete</button></div></template><button @click="resourceItems.push({label:'',url:'',children:[]})" class="px-3 py-2 bg-slate-700 rounded">Add menu item</button><button @click="saveMenu()" class="px-3 py-2 bg-indigo-600 rounded">Save menu</button></div></template>
+        </div>
+      </template>
+
       <template x-if="view === 'form' && currentType">
         <div class="max-w-2xl">
           <button @click="openList(currentType.name)" class="text-sm text-slate-400 hover:text-slate-200 mb-1"><i class="fa-solid fa-arrow-left mr-1"></i> Back to list</button>
           <h1 class="text-2xl font-bold mb-6" x-text="(editingId ? 'Edit ' : 'New ') + currentType.label"></h1>
 
-          <form @submit.prevent="saveItem()" class="space-y-5 bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
+          <form @submit.prevent="saveItem()" @input="dirty = true" class="space-y-5 bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
             <template x-for="f in currentType.fields" :key="f.name">
               <div>
                 <label class="block text-sm font-medium text-slate-300 mb-1.5">
@@ -201,6 +217,10 @@
                   ></textarea>
                 </template>
 
+                <template x-if="f.type === 'json' || f.type === 'repeater' || f.type === 'relationship'">
+                  <textarea x-model="formData[f.name]" rows="4" :required="f.required" placeholder="JSON value" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm font-mono focus:outline-none focus:border-indigo-500"></textarea>
+                </template>
+
                 <template x-if="f.type === 'boolean'">
                   <input type="checkbox" x-model="formData[f.name]" class="w-4 h-4">
                 </template>
@@ -213,9 +233,9 @@
                   </select>
                 </template>
 
-                <template x-if="!['textarea','richtext','boolean','select'].includes(f.type)">
+                <template x-if="!['textarea','richtext','boolean','select','json','repeater','relationship'].includes(f.type)">
                   <input
-                    :type="f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : (f.type === 'email' ? 'email' : (f.type === 'url' ? 'url' : 'text')))"
+                    :type="f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : (f.type === 'datetime' ? 'datetime-local' : (f.type === 'email' ? 'email' : (f.type === 'url' ? 'url' : (['file','image'].includes(f.type) ? 'file' : 'text')))))"
                     x-model="formData[f.name]" :required="f.required"
                     class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm focus:outline-none focus:border-indigo-500"
                   >
@@ -234,9 +254,13 @@
             <div x-show="currentType.has_status" class="flex items-center gap-3">
               <label class="text-sm font-medium text-slate-300">Status</label>
               <select x-model="formData.status" class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm">
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
+                <template x-for="opt in (currentType.statuses || ['draft','published'])" :key="opt"><option :value="opt" x-text="opt.replace('_',' ')"></option></template>
               </select>
+            </div>
+
+            <div x-show="currentType.has_status && formData.status === 'scheduled'">
+              <label class="text-sm font-medium text-slate-300">Publish at</label>
+              <input type="datetime-local" x-model="formData.publish_at" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-sm">
             </div>
 
             <div class="flex items-center gap-3 pt-2">
@@ -247,12 +271,14 @@
                 Cancel
               </button>
             </div>
+            <div x-show="editingId && formData._history?.items?.length" class="border-t border-slate-700 pt-4"><h2 class="font-medium mb-2">Revision history</h2><template x-for="(revision,index) in (formData._history?.items || [])" :key="index"><div class="flex items-center justify-between text-sm py-1"><span x-text="revision.action + ' · ' + revision.at"></span><button type="button" @click="restoreRevision(currentType.name, editingId, index)" class="text-indigo-400">Restore</button></div></template></div>
           </form>
         </div>
       </template>
 
     </div>
   </div>
+ <script>window.FLAXON_CMS_API_BASE = "__CMS_API_BASE__"; window.FLAXON_CMS_CSRF_TOKEN = "__CMS_CSRF_TOKEN__";</script>
   <!-- cms.js-->
  <script src="/static/admin/js/cms.js"></script>
 

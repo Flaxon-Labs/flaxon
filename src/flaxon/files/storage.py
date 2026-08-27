@@ -17,6 +17,14 @@ class FileStorage:
     def _ensure_directory(self) -> None:
         self.base_path.mkdir(parents=True, exist_ok=True)
 
+    def _safe_path(self, path: str = "", filename: str | None = None) -> Path:
+        candidate = self.base_path / path / (filename or "")
+        resolved_base = self.base_path.resolve()
+        resolved = candidate.resolve()
+        if resolved != resolved_base and resolved_base not in resolved.parents:
+            raise ValueError("File path escapes the storage root")
+        return resolved
+
     def generate_filename(self, original_filename: str) -> str:
         ext = ""
         if "." in original_filename:
@@ -32,7 +40,7 @@ class FileStorage:
         if path is None:
             path = ""
 
-        full_path = self.base_path / path / filename
+        full_path = self._safe_path(path, filename)
         full_path.parent.mkdir(parents=True, exist_ok=True)
 
         file.save(str(full_path))
@@ -42,7 +50,7 @@ class FileStorage:
         if path is None:
             path = ""
 
-        full_path = self.base_path / path / filename
+        full_path = self._safe_path(path, filename)
         full_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(full_path, "wb") as f:
@@ -52,29 +60,33 @@ class FileStorage:
 
     def delete(self, file_path: str) -> bool:
         try:
-            path = Path(file_path)
+            path = self._safe_path(Path(file_path).relative_to(self.base_path).parent.as_posix(), Path(file_path).name) if Path(file_path).is_absolute() else self._safe_path(file_path)
             if path.exists():
                 path.unlink()
                 return True
             return False
-        except OSError:
+        except (OSError, ValueError):
             return False
 
     def delete_directory(self, directory: str) -> bool:
         try:
-            path = self.base_path / directory
+            path = self._safe_path(directory)
             if path.exists() and path.is_dir():
                 shutil.rmtree(path)
                 return True
             return False
-        except OSError:
+        except (OSError, ValueError):
             return False
 
     def exists(self, file_path: str) -> bool:
-        return Path(file_path).exists()
+        try:
+            path = self._safe_path(Path(file_path).relative_to(self.base_path).as_posix()) if Path(file_path).is_absolute() else self._safe_path(file_path)
+        except ValueError:
+            return False
+        return path.exists()
 
     def get_size(self, file_path: str) -> int:
-        path = Path(file_path)
+        path = self._safe_path(Path(file_path).relative_to(self.base_path).as_posix()) if Path(file_path).is_absolute() else self._safe_path(file_path)
         if path.exists():
             return path.stat().st_size
         return 0
@@ -84,14 +96,17 @@ class FileStorage:
         return f"{self.url_prefix}/{relative}"
 
     def list_files(self, directory: str = "") -> list[str]:
-        path = self.base_path / directory
+        path = self._safe_path(directory)
         if not path.exists():
             return []
 
         return [str(p) for p in path.iterdir() if p.is_file()]
 
     def get_file_info(self, file_path: str) -> dict[str, Any]:
-        path = Path(file_path)
+        try:
+            path = self._safe_path(Path(file_path).relative_to(self.base_path).as_posix()) if Path(file_path).is_absolute() else self._safe_path(file_path)
+        except ValueError:
+            return {}
         if not path.exists():
             return {}
 

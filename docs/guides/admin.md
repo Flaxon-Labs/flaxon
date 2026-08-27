@@ -1,6 +1,11 @@
 
 # Admin Dashboard
 
+> Current production guidance for the combined AdminDashboard and CMS is in
+> [Admin and CMS Production Guide](admin-cms.md). This guide remains the
+> model-admin reference; it does not replace the security, persistence, SPA,
+> migration, or CMS workflow documentation there.
+
 Flaxon includes an optional built-in admin dashboard for managing application data through a web interface.
 
 It provides a CRUD-based management system inspired by Django Admin while being designed for **async-first Python applications**.

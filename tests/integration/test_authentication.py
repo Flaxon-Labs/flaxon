@@ -1,6 +1,8 @@
 import pytest
 
 from flaxon import Flaxon
+from flaxon.admin.services import AdminAuth
+from flaxon.exceptions import Forbidden
 from flaxon.security import JWTBackend, SessionBackend, User, authenticate, login_required
 from flaxon.testing import TestClient
 
@@ -140,3 +142,29 @@ def test_session_expired():
 
     response = client.get("/protected", headers={"Authorization": f"Bearer {session_id}"})
     assert response.status_code == 401
+
+
+def test_admin_password_reset_tokens_expire_and_change_password():
+    auth = AdminAuth([{"username": "alice", "email": "alice@example.com", "password": "OldSecret123!"}])
+    token = auth.request_password_reset("alice@example.com")
+    assert token
+    assert auth.reset_password(token, "NewSecret123!") is True
+    assert auth.verify("alice", "NewSecret123!") is not None
+    assert auth.reset_password(token, "AnotherSecret123!") is False
+
+
+def test_admin_email_verification_tokens_are_single_use():
+    auth = AdminAuth([{"username": "alice", "email": "alice@example.com", "password": "Secret123!"}])
+    token = auth.request_email_verification("alice")
+    assert token
+    assert auth.verify_email(token) is True
+    assert auth.verify_email(token) is False
+    assert auth.users["alice"]["email_verified"] is True
+
+
+def test_admin_role_permissions_are_enforced():
+    auth = AdminAuth([{"username": "editor", "password": "Secret123!", "roles": ["editor"], "permissions": []}])
+    auth.role_permissions = {"editor": ["product:read"]}
+    auth.authorize(auth.user("editor"), "product:read")
+    with pytest.raises(Forbidden):
+        auth.authorize(auth.user("editor"), "product:delete")

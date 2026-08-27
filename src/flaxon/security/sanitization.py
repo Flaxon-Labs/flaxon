@@ -7,6 +7,23 @@ from typing import Any
 
 class Sanitizer:
     @staticmethod
+    def allow_html(value: str, tags: set[str] | None = None, attributes: set[str] | None = None) -> str:
+        """Keep a conservative formatting allowlist and remove active attributes."""
+        tags = tags or {"p", "br", "strong", "em", "b", "i", "u", "ul", "ol", "li", "blockquote", "a"}
+        attributes = attributes or {"href", "title"}
+        def clean_tag(match: re.Match[str]) -> str:
+            closing, name, raw_attrs = match.group(1), match.group(2).lower(), match.group(3) or ""
+            if name not in tags:
+                return ""
+            if closing:
+                return f"</{name}>"
+            safe = []
+            for attr, quote, val in re.findall(r"([\w-]+)\s*=\s*(['\"])(.*?)\2", raw_attrs):
+                if attr.lower() in attributes and not re.match(r"(?i)\s*(javascript|data):", val):
+                    safe.append(f'{attr.lower()}="{html.escape(val, quote=True)}"')
+            return f"<{name}{(' ' + ' '.join(safe)) if safe else ''}>"
+        return re.sub(r"<\s*(/?)\s*([\w-]+)([^>]*)>", clean_tag, str(value))
+    @staticmethod
     def html_escape(value: str) -> str:
         return html.escape(value)
 

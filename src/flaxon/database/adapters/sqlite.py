@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import re
 
 from .base import BaseAdapter
 
@@ -11,6 +12,14 @@ class SQLiteAdapter(BaseAdapter):
         self.kwargs = kwargs
         self._conn = None
         self._in_transaction = False
+
+    @staticmethod
+    def _adapt(query: str, args: tuple[Any, ...]) -> tuple[str, tuple[Any, ...]]:
+        """Translate PostgreSQL-style positional placeholders for SQLite."""
+        positions = [int(match.group(1)) for match in re.finditer(r"\$(\d+)", query)]
+        if not positions:
+            return query, args
+        return re.sub(r"\$(\d+)", "?", query), tuple(args[position - 1] for position in positions)
 
     async def connect(self) -> None:
         try:
@@ -25,12 +34,14 @@ class SQLiteAdapter(BaseAdapter):
             self._conn = None
 
     async def execute(self, query: str, *args: Any) -> Any:
+        query, args = self._adapt(query, args)
         cursor = await self._conn.execute(query, args)
         if not self._in_transaction:
             await self._conn.commit()
         return cursor
 
     async def fetch_one(self, query: str, *args: Any) -> dict[str, Any] | None:
+        query, args = self._adapt(query, args)
         cursor = await self._conn.execute(query, args)
         row = await cursor.fetchone()
         if row is None:
@@ -39,12 +50,14 @@ class SQLiteAdapter(BaseAdapter):
         return dict(zip(columns, row))
 
     async def fetch_all(self, query: str, *args: Any) -> list[dict[str, Any]]:
+        query, args = self._adapt(query, args)
         cursor = await self._conn.execute(query, args)
         rows = await cursor.fetchall()
         columns = [desc[0] for desc in cursor.description]
         return [dict(zip(columns, row)) for row in rows]
 
     async def fetch_val(self, query: str, *args: Any) -> Any:
+        query, args = self._adapt(query, args)
         cursor = await self._conn.execute(query, args)
         row = await cursor.fetchone()
         return row[0] if row else None

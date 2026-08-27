@@ -12,14 +12,14 @@
             <p class="text-slate-400 text-sm mt-1">Manage your application data</p>
         </div>
         <div class="flex gap-2">
-            <button class="px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm transition flex items-center gap-2">
+            <button type="button" onclick="location.reload()" title="Refresh dashboard" class="px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm transition flex items-center gap-2">
                 <i class="fas fa-sync-alt"></i>
                 <span class="hidden sm:inline">Refresh</span>
             </button>
-            <button class="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 rounded-lg text-sm font-medium transition text-white flex items-center gap-2">
+            {% if models %}<a href="{{ dashboard.url_prefix }}/{{ models[0].get_name() }}/add" title="Create a new record" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 rounded-lg text-sm font-medium transition text-white flex items-center gap-2">
                 <i class="fas fa-plus"></i>
                 <span class="hidden sm:inline">New</span>
-            </button>
+            </a>{% endif %}
         </div>
     </div>
 
@@ -31,15 +31,15 @@
         </div>
         <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 sm:p-6">
             <p class="text-slate-400 text-xs uppercase tracking-wider">Total Records</p>
-            <p class="text-2xl font-bold text-white">0</p>
+            <p class="text-2xl font-bold text-white">{{ total_records }}</p>
         </div>
         <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 sm:p-6">
             <p class="text-slate-400 text-xs uppercase tracking-wider">Recent Changes</p>
-            <p class="text-2xl font-bold text-white">0</p>
+            <p class="text-2xl font-bold text-white">{{ recent_changes }}</p>
         </div>
         <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 sm:p-6">
             <p class="text-slate-400 text-xs uppercase tracking-wider">Users</p>
-            <p class="text-2xl font-bold text-white">1</p>
+            <p class="text-2xl font-bold text-white">{{ user_count }}</p>
         </div>
     </div>
 

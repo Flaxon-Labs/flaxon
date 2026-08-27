@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Admin CSS -->
-    <link rel="stylesheet" href="/static/admin/css/admin.css">
+    <link rel="stylesheet" href="/static/admin/css/admin.css?v=20260827-2">
 
     {% block extra_head %}{% endblock %}
 </head>
@@ -49,24 +49,28 @@
 
                     <!-- Search -->
                     <div class="flex-1 max-w-md mx-4 hidden md:block">
-                        <div class="relative">
-                            <input type="text" placeholder="Search..." class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 pl-10 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
+                        <form method="get" action="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/search" class="relative">
+                            <input type="search" name="q" placeholder="Search all models..." aria-label="Search all models" class="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 pl-10 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
                             <i class="fas fa-search absolute left-3 top-2.5 text-slate-400"></i>
-                        </div>
+                        </form>
                     </div>
 
                     <!-- Right Actions -->
                     <div class="flex items-center gap-2 sm:gap-3">
-                        <button class="p-2 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white relative">
+                        <button @click="toggleNotifications()" title="Notifications" aria-label="Notifications" class="p-2 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white relative">
                             <i class="fas fa-bell"></i>
-                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            <span x-show="notifications.length" x-text="notifications.length > 9 ? '9+' : notifications.length" class="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-red-500 rounded-full text-[10px] leading-4 text-white"></span>
                         </button>
-                        <button @click="toggleDarkMode()" class="p-2 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
+                        <button @click="toggleDarkMode()" title="Toggle theme" aria-label="Toggle theme" class="p-2 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
                             <i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
                         </button>
-                        <button class="p-2 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
+                        <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/profile" title="Profile" class="p-2 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white">
                             <i class="fas fa-user-circle text-xl"></i>
-                        </button>
+                        </a>
+                    </div>
+                    <div x-show="notificationsOpen" x-cloak @click.outside="notificationsOpen = false" class="absolute right-4 top-14 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-700 bg-slate-800 shadow-2xl">
+                        <div class="flex items-center justify-between border-b border-slate-700 px-4 py-3"><strong class="text-sm">Notifications</strong><a href="{{ base_prefix if base_prefix is defined else (dashboard.url_prefix if dashboard else '/admin') }}/activity" class="text-xs text-blue-400">View activity</a></div>
+                        <div class="max-h-80 overflow-y-auto p-2"><template x-for="item in notifications" :key="item.timestamp + item.action"><div class="border-b border-slate-700/60 px-2 py-3 last:border-0"><p class="text-sm" x-text="formatNotification(item)"></p><p class="mt-1 text-xs text-slate-400" x-text="item.timestamp"></p></div></template><p x-show="!notifications.length" class="px-2 py-5 text-center text-sm text-slate-400">No recent activity.</p></div>
                     </div>
                 </div>
             </div>
@@ -79,11 +83,11 @@
                 <i class="fas fa-th-large text-lg"></i>
                 <span class="text-[10px] mt-0.5">Dashboard</span>
             </a>
-            <button class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50">
+            <a href="{{ base_prefix }}/search" class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50">
                 <i class="fas fa-search text-lg"></i>
                 <span class="text-[10px] mt-0.5">Search</span>
-            </button>
-            <button class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50">
+            </a>
+            <button @click="toggleNotifications()" class="flex flex-col items-center text-slate-400 hover:text-white transition py-1 px-3 rounded-lg hover:bg-slate-700/50" aria-label="Alerts">
                 <i class="fas fa-bell text-lg"></i>
                 <span class="text-[10px] mt-0.5">Alerts</span>
             </button>
@@ -107,6 +111,13 @@
                             <span>{{ model_item.get_verbose_name_plural() }}</span>
                         </a>
                         {% endfor %}
+                        <a href="{{ base_prefix }}/users" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition"><i class="fas fa-users w-5"></i><span>Users</span></a>
+                        <a href="{{ base_prefix }}/roles" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition"><i class="fas fa-shield-halved w-5"></i><span>Roles</span></a>
+                        <a href="{{ base_prefix }}/media" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition"><i class="fas fa-photo-film w-5"></i><span>Media</span></a>
+                        <a href="{{ base_prefix }}/settings" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition"><i class="fas fa-gear w-5"></i><span>Settings</span></a>
+                        <a href="{{ base_prefix }}/activity" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition"><i class="fas fa-clock-rotate-left w-5"></i><span>Activity</span></a>
+                        <a href="{{ base_prefix }}/operations" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/30 transition"><i class="fas fa-heart-pulse w-5"></i><span>Operations</span></a>
+                        <a href="{{ base_prefix }}/logout" class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 transition"><i class="fas fa-right-from-bracket w-5"></i><span>Log out</span></a>
                     </div>
                 </div>
             </aside>
@@ -125,22 +136,40 @@
     <script>
         function adminApp() {
             return {
-                darkMode: localStorage.getItem('admin-dark-mode') === 'true' || true,
+                darkMode: localStorage.getItem('admin-dark-mode') !== 'false',
+                notifications: [],
+                notificationsOpen: false,
                 init() {
                     initThreeJS();
-                    if (this.darkMode) {
-                        document.documentElement.classList.add('dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                    }
+                    this.applyTheme();
+                    this.loadNotifications();
                 },
                 toggleDarkMode() {
                     this.darkMode = !this.darkMode;
                     localStorage.setItem('admin-dark-mode', this.darkMode);
-                    if (this.darkMode) {
-                        document.documentElement.classList.add('dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
+                    this.applyTheme();
+                },
+                async loadNotifications() {
+                    try {
+                        const response = await fetch('{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else "/admin") }}/notifications', { credentials: 'same-origin' });
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.notifications = data.items || [];
+                        }
+                    } catch (_) { /* Notifications are non-blocking UI. */ }
+                },
+                toggleNotifications() {
+                    this.notificationsOpen = !this.notificationsOpen;
+                    if (this.notificationsOpen) this.loadNotifications();
+                },
+                formatNotification(item) {
+                    return `${item.username || 'System'} ${item.action.replaceAll('_', ' ')} ${item.resource || 'admin'}`;
+                },
+                applyTheme() {
+                    if (window.applyAdminTheme) window.applyAdminTheme(this.darkMode);
+                    else {
+                        document.documentElement.classList.toggle('dark', this.darkMode);
+                        document.documentElement.classList.toggle('light', !this.darkMode);
                     }
                 }
             }

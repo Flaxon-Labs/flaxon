@@ -1,10 +1,14 @@
 import asyncio
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, AsyncGenerator, Generator
 
 import pytest
+
+# Ensure tests exercise the checkout rather than an unrelated installed build.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from flaxon import Flaxon
 from flaxon.database import DatabaseManager, PostgresConnection, SQLiteConnection

@@ -10,6 +10,7 @@ class Headers(MutableMapping[str, str]):
 
     def __init__(self, headers: dict[str, str] | list[tuple[bytes, bytes]] | None = None) -> None:
         self._items: dict[str, tuple[str, str]] = {}
+        self._extra: list[tuple[str, str]] = []
         if headers:
             iterable = headers.items() if isinstance(headers, dict) else headers
             for key, value in iterable:
@@ -26,6 +27,10 @@ class Headers(MutableMapping[str, str]):
     def __delitem__(self, key: str) -> None:
         del self._items[key.lower()]
 
+    def add(self, key: str, value: str) -> None:
+        """Append a header value, preserving repeated headers such as Set-Cookie."""
+        self._extra.append((key.lower(), str(value)))
+
     def __iter__(self) -> Iterator[str]:
         return iter(self._items)
 
@@ -34,4 +39,6 @@ class Headers(MutableMapping[str, str]):
 
     def to_asgi(self) -> list[tuple[bytes, bytes]]:
         """Return headers encoded for an ASGI response."""
-        return [(key.encode("latin-1"), value.encode("latin-1")) for key, value in self._items.values()]
+        headers = [(key.encode("latin-1"), value.encode("latin-1")) for key, value in self._items.values()]
+        headers.extend((key.encode("latin-1"), value.encode("latin-1")) for key, value in self._extra)
+        return headers

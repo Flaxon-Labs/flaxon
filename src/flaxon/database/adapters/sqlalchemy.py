@@ -12,6 +12,24 @@ class SQLAlchemyAdapter(BaseAdapter):
         self._engine = None
         self._session = None
 
+    @staticmethod
+    def _prepare(query: str, args: tuple[Any, ...]) -> tuple[Any, dict[str, Any]]:
+        """Use named binds so the adapter accepts the same positional style as SQL adapters."""
+        from sqlalchemy import text
+        import re
+
+        names: list[str] = []
+
+        def replace(match: Any) -> str:
+            name = f"p{len(names) + 1}"
+            names.append(name)
+            return f":{name}"
+
+        query = re.sub(r"\$(\d+)", replace, query)
+        if not names and "?" in query:
+            query = re.sub(r"\?", replace, query)
+        return text(query), {name: args[index] for index, name in enumerate(names)}
+
     async def connect(self) -> None:
         try:
             from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -29,14 +47,18 @@ class SQLAlchemyAdapter(BaseAdapter):
             self._session = None
 
     async def execute(self, query: str, *args: Any) -> Any:
-        async with self._sessionmaker() as session:
-            result = await session.execute(query, args)
+        session = self._session or self._sessionmaker()
+        context = session if self._session else session
+        async with context:
+            statement, params = self._prepare(query, args)
+            result = await session.execute(statement, params)
             await session.commit()
             return result
 
     async def fetch_one(self, query: str, *args: Any) -> dict[str, Any] | None:
         async with self._sessionmaker() as session:
-            result = await session.execute(query, args)
+            statement, params = self._prepare(query, args)
+            result = await session.execute(statement, params)
             row = result.first()
             if row is None:
                 return None
@@ -44,12 +66,14 @@ class SQLAlchemyAdapter(BaseAdapter):
 
     async def fetch_all(self, query: str, *args: Any) -> list[dict[str, Any]]:
         async with self._sessionmaker() as session:
-            result = await session.execute(query, args)
+            statement, params = self._prepare(query, args)
+            result = await session.execute(statement, params)
             return [dict(row._mapping) for row in result.all()]
 
     async def fetch_val(self, query: str, *args: Any) -> Any:
         async with self._sessionmaker() as session:
-            result = await session.execute(query, args)
+            statement, params = self._prepare(query, args)
+            result = await session.execute(statement, params)
             row = result.first()
             return row[0] if row else None
 
@@ -68,8 +92,9 @@ class SQLAlchemyAdapter(BaseAdapter):
 
     async def ping(self) -> bool:
         try:
+            from sqlalchemy import text
             async with self._engine.connect() as conn:
-                await conn.execute("SELECT 1")
+                await conn.execute(text("SELECT 1"))
             return True
         except Exception:
             return False

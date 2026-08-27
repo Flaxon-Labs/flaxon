@@ -9,6 +9,34 @@ from typing import Any
 from .manager import DatabaseManager
 
 
+def _sql_statements(script: str) -> list[str]:
+    """Split migration scripts without breaking semicolons in quoted values."""
+    statements: list[str] = []
+    start = 0
+    quote: str | None = None
+    index = 0
+    while index < len(script):
+        char = script[index]
+        if quote:
+            if char == quote:
+                if index + 1 < len(script) and script[index + 1] == quote:
+                    index += 2
+                    continue
+                quote = None
+        elif char in ("'", '"', "`"):
+            quote = char
+        elif char == ";":
+            statement = script[start:index].strip()
+            if statement:
+                statements.append(statement)
+            start = index + 1
+        index += 1
+    statement = script[start:].strip()
+    if statement:
+        statements.append(statement)
+    return statements
+
+
 @dataclass
 class Migration:
     version: str
@@ -97,7 +125,8 @@ class MigrationRunner:
 
     async def apply_migration(self, migration: Migration) -> None:
         async with self.db.transaction() as tx:
-            await tx.execute(migration.up)
+            for statement in _sql_statements(migration.up):
+                await tx.execute(statement)
             await tx.execute(
                 f"INSERT INTO {self.table_name} (version, name, applied_at, down) VALUES ($1, $2, $3, $4)",
                 migration.version,
@@ -111,7 +140,8 @@ class MigrationRunner:
             raise ValueError(f"Migration {migration.version} has no down script")
 
         async with self.db.transaction() as tx:
-            await tx.execute(migration.down)
+            for statement in _sql_statements(migration.down):
+                await tx.execute(statement)
             await tx.execute(
                 f"DELETE FROM {self.table_name} WHERE version = $1",
                 migration.version,

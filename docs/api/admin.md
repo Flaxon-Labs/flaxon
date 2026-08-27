@@ -162,3 +162,16 @@
 ## ValidationError
 
 ::: flaxon.admin.exceptions.ValidationError
+# Admin API Reference
+
+For the current production contract, including authentication, CSRF,
+persistence, migrations, CMS APIs, extension hooks, and custom clients, see
+[Admin and CMS Production Guide](../guides/admin-cms.md) and
+[Admin and CMS API Reference](admin-cms.md). The symbols below document the
+lower-level model-admin classes.
+
+For the current production contract, including authentication, CSRF,
+persistence, migrations, CMS APIs, extension hooks, and custom clients, see
+[Admin and CMS Production Guide](../guides/admin-cms.md) and
+[Admin and CMS API Reference](admin-cms.md). The symbols below document the
+lower-level model-admin classes.

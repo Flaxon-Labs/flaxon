@@ -2,6 +2,10 @@
 
 # Flaxon Admin Dashboard Guide
 
+> For the current implementation, including persistent storage, migrations,
+> authentication, CSRF, roles, media, revisions, CMS workflows, and custom
+> clients, start with [Admin and CMS Production Guide](guides/admin-cms.md).
+
 > Learn how to build a powerful administration dashboard with Flaxon. This guide covers registration, CRUD operations, customization, permissions, actions, dashboards, and best practices.
 
 ---

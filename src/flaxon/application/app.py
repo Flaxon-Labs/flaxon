@@ -460,7 +460,7 @@ class Flaxon:
         # Save session header updates
         if session_is_new or request.session.is_dirty():
             await self.sessions.save(request.session)
-            response.headers["set-cookie"] = self.sessions.create_cookie(request.session)
+            response.headers.add("set-cookie", self.sessions.create_cookie(request.session))
 
         if request.method == "HEAD":
             response.body = b""

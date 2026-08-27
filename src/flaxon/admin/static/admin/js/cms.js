@@ -1,4 +1,5 @@
-  const API_BASE = "__CMS_API_BASE__";
+  const API_BASE = window.FLAXON_CMS_API_BASE || "__CMS_API_BASE__";
+  const CSRF_TOKEN = window.FLAXON_CMS_CSRF_TOKEN || "__CMS_CSRF_TOKEN__";
 
     function cmsApp() {
       return {
@@ -8,6 +9,7 @@
         view: "dashboard",
         currentType: null,
         error: null,
+        darkMode: localStorage.getItem("admin-dark-mode") !== "false",
 
         listItems: [],
         listMeta: { total: 0, page: 1, pages: 1, per_page: 20 },
@@ -17,18 +19,54 @@
 
         editingId: null,
         formData: {},
+        resource: null,
+        resourceItems: [],
+        resourceDraft: {},
+        dragMenuIndex: null,
+        taxonomyName: "",
+        taxonomyTerm: "",
+        dirty: false,
+        autosaveTimer: null,
 
         async init() {
+          this.applyTheme();
           await this.loadConfig();
+          document.addEventListener("dragstart", (event) => {
+            const item = event.target.closest?.('[draggable="true"]');
+            if (!item) return;
+            this.dragMenuIndex = Array.from(item.parentElement.children).indexOf(item);
+          });
+          document.addEventListener("dragover", (event) => {
+            if (event.target.closest?.('[draggable="true"]')) event.preventDefault();
+          });
+          document.addEventListener("drop", (event) => {
+            const item = event.target.closest?.('[draggable="true"]');
+            if (!item) return;
+            event.preventDefault();
+            this.dropMenuItem(Array.from(item.parentElement.children).indexOf(item));
+          });
+          window.addEventListener("beforeunload", (event) => { if (this.view === "form" && this.dirty) { event.preventDefault(); event.returnValue = ""; } });
           window.addEventListener("hashchange", () => this.route());
           this.route();
+        },
+
+        toggleTheme() {
+          this.darkMode = !this.darkMode;
+          localStorage.setItem("admin-dark-mode", this.darkMode);
+          this.applyTheme();
+        },
+        applyTheme() {
+          document.documentElement.classList.toggle("dark", this.darkMode);
+          document.documentElement.classList.toggle("light", !this.darkMode);
+          document.body.classList.toggle("theme-dark", this.darkMode);
+          document.body.classList.toggle("theme-light", !this.darkMode);
         },
 
         async api(path, options = {}) {
           try {
             const res = await fetch(API_BASE + path, {
-              headers: { "Content-Type": "application/json" },
               ...options,
+              headers: { "Content-Type": "application/json", ...(CSRF_TOKEN ? { "X-CSRF-Token": CSRF_TOKEN } : {}), ...(options.headers || {}) },
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
@@ -64,11 +102,64 @@
             this.openCreate(parts[0], false);
           } else if (parts[2] === "edit") {
             this.openEdit(parts[0], parts[1], false);
+          } else if (parts[0] === "resource") {
+            this.openResource(parts[1], false);
           }
         },
 
         goHome() {
           window.location.hash = "";
+        },
+
+        async openResource(name, pushHash = true) {
+          this.resource = name;
+          this.view = "resource";
+          if (pushHash) window.location.hash = `#/resource/${name}`;
+          if (name === "comments") this.resourceItems = await this.api("/comments") || [];
+          if (name === "taxonomies") this.resourceItems = await this.api("/taxonomies") || {};
+          if (name === "menu") this.resourceItems = (await this.api("/menus/main") || {}).items || [];
+        },
+
+        async moderateComment(id, status) {
+          const result = await this.api(`/comments/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+          if (result) await this.openResource("comments", false);
+        },
+
+        async restoreRevision(typeName, itemId, revision) {
+          const result = await this.api(`/${typeName}/items/${itemId}/restore/${revision}`, { method: "POST" });
+          if (result) await this.openEdit(typeName, itemId);
+        },
+
+        async saveMenu() {
+          const result = await this.api("/menus/main", { method: "PUT", body: JSON.stringify(this.resourceItems) });
+          if (result) this.resourceItems = result.items || [];
+        },
+
+        async createTaxonomy() {
+          if (!this.taxonomyName.trim()) return;
+          const result = await this.api("/taxonomies", { method: "POST", body: JSON.stringify({ name: this.taxonomyName.trim() }) });
+          if (result) { this.taxonomyName = ""; this.resourceItems = result; }
+        },
+        async addTaxonomyTerm(name) {
+          if (!this.taxonomyTerm.trim()) return;
+          const result = await this.api(`/taxonomies/${encodeURIComponent(name)}`, { method: "POST", body: JSON.stringify({ term: this.taxonomyTerm.trim() }) });
+          if (result) { this.taxonomyTerm = ""; this.resourceItems = result; }
+        },
+        async deleteTaxonomy(name) {
+          const result = await this.api(`/taxonomies/${encodeURIComponent(name)}`, { method: "DELETE" });
+          if (result) await this.openResource("taxonomies", false);
+        },
+        moveMenuItem(index, delta) {
+          const target = index + delta;
+          if (target < 0 || target >= this.resourceItems.length) return;
+          const items = [...this.resourceItems];
+          [items[index], items[target]] = [items[target], items[index]];
+          this.resourceItems = items;
+        },
+        dropMenuItem(index) {
+          if (this.dragMenuIndex === null || this.dragMenuIndex === index) return;
+          this.moveMenuItem(this.dragMenuIndex, index > this.dragMenuIndex ? 1 : -1);
+          this.dragMenuIndex = null;
         },
 
         findType(name) {
@@ -142,9 +233,12 @@
           this.editingId = null;
           this.formData = { status: "draft", slug: "" };
           this.currentType.fields.forEach((f) => {
-            this.formData[f.name] = f.type === "boolean" ? false : "";
+            this.formData[f.name] = f.type === "boolean" ? false : (['json'].includes(f.type) ? "{}" : (['repeater','relationship'].includes(f.type) ? "[]" : ""));
           });
           this.view = "form";
+          this.dirty = false;
+          this.restoreDraft(typeName);
+          this.startAutosave();
           if (pushHash) window.location.hash = `#/${typeName}/new`;
         },
 
@@ -155,32 +249,80 @@
           if (!item) return;
           this.editingId = itemId;
           this.formData = { ...item };
+          this.currentType.fields.filter((f) => ['json','repeater','relationship'].includes(f.type)).forEach((f) => { if (this.formData[f.name] !== undefined && typeof this.formData[f.name] !== 'string') this.formData[f.name] = JSON.stringify(this.formData[f.name], null, 2); });
+          this.formData._history = await this.api(`/${typeName}/items/${itemId}/history`) || { items: [] };
           this.view = "form";
+          this.dirty = false;
+          this.restoreDraft(typeName, itemId);
+          this.startAutosave();
           if (pushHash) window.location.hash = `#/${typeName}/${itemId}/edit`;
         },
 
         async saveItem() {
           const typeName = this.currentType.name;
+          const payload = { ...this.formData };
+          delete payload._history;
+          const hasUpload = this.currentType.fields.some((field) => ["file", "image"].includes(field.type));
+          let body = JSON.stringify(payload);
+          let headers = { "Content-Type": "application/json", "X-CSRF-Token": CSRF_TOKEN };
+          if (hasUpload) {
+            const multipart = new FormData();
+            Object.entries(payload).forEach(([key, value]) => multipart.append(key, value ?? ""));
+            this.$root.querySelectorAll('input[type="file"]').forEach((input) => { if (input.files[0]) multipart.set(input.name, input.files[0]); });
+            body = multipart;
+            headers = { "X-CSRF-Token": CSRF_TOKEN };
+          }
           if (this.editingId) {
             const ok = await this.api(`/${typeName}/items/${this.editingId}`, {
               method: "PUT",
-              body: JSON.stringify(this.formData),
+              body,
+              headers,
             });
-            if (ok) this.openList(typeName);
+            if (ok) { this.clearDraft(typeName, this.editingId); this.dirty = false; this.openList(typeName); }
           } else {
             const ok = await this.api(`/${typeName}/items`, {
               method: "POST",
-              body: JSON.stringify(this.formData),
+              body,
+              headers,
             });
-            if (ok) this.openList(typeName);
+            if (ok) { this.clearDraft(typeName); this.dirty = false; this.openList(typeName); }
           }
           await this.loadConfig();
         },
+
+        draftKey(typeName, id = "new") { return `flaxon-cms-draft:${typeName}:${id}`; },
+        startAutosave() {
+          clearInterval(this.autosaveTimer);
+          this.autosaveTimer = setInterval(() => {
+            if (this.view === "form" && this.currentType && this.dirty) localStorage.setItem(this.draftKey(this.currentType.name, this.editingId || "new"), JSON.stringify(this.formData));
+          }, 1000);
+        },
+        restoreDraft(typeName, id = "new") {
+          try { const draft = JSON.parse(localStorage.getItem(this.draftKey(typeName, id)) || "null"); if (draft) { this.formData = { ...this.formData, ...draft }; this.dirty = true; } } catch (_) { this.error = "Saved draft could not be loaded."; }
+        },
+        clearDraft(typeName, id = "new") { localStorage.removeItem(this.draftKey(typeName, id || "new")); },
 
         formatCell(value) {
           if (value === null || value === undefined) return "";
           if (typeof value === "string" && value.length > 60) return value.slice(0, 57) + "...";
           return value;
+        },
+
+        exportUrl(format) {
+          return `${API_BASE}/export/${this.currentType.name}?format=${format}`;
+        },
+
+        async importFile(event) {
+          const file = event.target.files[0];
+          if (!file || !this.currentType) return;
+          const text = await file.text();
+          let records;
+          if (file.name.toLowerCase().endsWith('.csv')) {
+            const [header, ...rows] = text.trim().split(/\r?\n/).map((line) => line.split(','));
+            records = rows.map((row) => Object.fromEntries(header.map((key, index) => [key, row[index] || ''])));
+          } else records = JSON.parse(text);
+          const result = await this.api(`/import/${this.currentType.name}`, { method: "POST", body: JSON.stringify(records) });
+          if (result) await this.fetchList();
         },
       };
     }

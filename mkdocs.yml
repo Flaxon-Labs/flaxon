@@ -162,9 +162,12 @@ nav:
       - Validation: guides/validation.md
       - WebSockets: guides/websockets.md
       - Templates (Jinax): guides/jinax.md
+      - Email: mail.md
       - Databases: guides/databases.md
       - Authentication: guides/authentication.md
       - Authorization: guides/authorization.md
+      - Admin and CMS: guides/admin-cms.md
+      - Admin Model Reference: guides/admin.md
       - Testing: guides/testing.md
       - Debugging: guides/debugging.md
       - Plugins: guides/plugins.md
@@ -177,6 +180,8 @@ nav:
       - WebSocket: api/websocket.md
       - Validation: api/validation.md
       - Security: api/security.md
+      - Admin API: api/admin.md
+      - Admin and CMS API: api/admin-cms.md
       - Jinax: api/jinax.md
       - Testing: api/testing.md
       - Tasks: api/tasks.md
