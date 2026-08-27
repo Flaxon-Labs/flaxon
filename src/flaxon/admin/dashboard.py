@@ -28,7 +28,13 @@ class AdminDashboard:
         self.registry = registry or default_registry
         self.jinax = Jinax(template_dir or _PACKAGE_TEMPLATE_DIR, auto_reload=True)
         self.jinax.add_global("dashboard", self)
+        self._mount_static()
         self._register_routes()
+
+    def _mount_static(self) -> None:
+        if hasattr(self.app, "mount_static"):
+            static_dir = os.path.join(os.path.dirname(__file__), "static")
+            self.app.mount_static("/static", static_dir)
 
     def _register_routes(self) -> None:
         router = self.app.router

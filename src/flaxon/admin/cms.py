@@ -317,7 +317,13 @@ class CMS:
         self.title = title
         self.template_path = Path(template_path) if template_path else _DEFAULT_TEMPLATE_PATH
         self.content_types: dict[str, ContentType] = {}
+        self._mount_static()
         self._register_routes()
+
+    def _mount_static(self) -> None:
+        if hasattr(self.app, "mount_static"):
+            static_dir = _PACKAGE_DIR / "static"
+            self.app.mount_static("/static", str(static_dir))
 
     def register(self, content_type: ContentType) -> ContentType:
         self.content_types[content_type.name] = content_type

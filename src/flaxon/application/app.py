@@ -251,8 +251,34 @@ class Flaxon:
     # GRAPHQL METHODS
     # ============================================================
 
-    def enable_graphql(
+    def mount_static(
         self,
+        url_prefix: str,
+        directory: str,
+        *,
+        cache_control: str | None = "public, max-age=3600",
+    ) -> None:
+        """Serve static files from `directory` under `url_prefix`.
+
+        Idempotent: mounting the same url_prefix twice (e.g. because both
+        AdminDashboard and CMS try to mount the shared admin static
+        folder) only registers the route once.
+        """
+        from flaxon.static import StaticFiles
+
+        prefix = url_prefix.rstrip("/")
+        route_path = f"{prefix}/<path:filepath>"
+
+        if any(getattr(route, "path", None) == route_path for route in self.router.routes):
+            return
+
+        handler = StaticFiles(directory, cache_control=cache_control)
+
+        @self.router.get(route_path)
+        async def static_handler(request: Request, filepath: str) -> Response:
+            return await handler(request, filepath)
+
+    def enable_graphql(        self,
         schema: GraphQLSchema | None = None,
         url: str = "/graphql",
         enable_playground: bool = True,
