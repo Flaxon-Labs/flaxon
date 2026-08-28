@@ -92,6 +92,7 @@ async def execute_selection_set(
                 continue
 
             field_args = resolve_arguments(selection, exec_context["variables"])
+            field_args = coerce_arguments(field_args, field_def.args)
             resolved_value = await resolve_field_value(
                 field_def=field_def,
                 parent_value=root_value,
@@ -202,6 +203,42 @@ def resolve_arguments(node: Any, variables: dict[str, Any]) -> dict[str, Any]:
     return args
 
 
+def coerce_arguments(args: dict[str, Any], definitions: dict[str, Any]) -> dict[str, Any]:
+    """Coerce parsed argument values according to the field declaration."""
+    coerced = dict(args)
+    for name, type_def in definitions.items():
+        if name not in coerced or coerced[name] is None:
+            continue
+        value = coerced[name]
+        while isinstance(type_def, NonNull):
+            type_def = type_def.type
+        if isinstance(type_def, List):
+            item_type = type_def.type
+            values = value if isinstance(value, list) else [value]
+            coerced[name] = [coerce_argument_value(item, item_type) for item in values]
+        else:
+            coerced[name] = coerce_argument_value(value, type_def)
+    return coerced
+
+
+def coerce_argument_value(value: Any, type_def: Any) -> Any:
+    if isinstance(type_def, NonNull):
+        return coerce_argument_value(value, type_def.type)
+    if isinstance(type_def, List):
+        return [coerce_argument_value(item, type_def.type) for item in (value if isinstance(value, list) else [value])]
+    if isinstance(type_def, Scalar):
+        return type_def.parse_value(value)
+    if type_def is int:
+        return int(value)
+    if type_def is float:
+        return float(value)
+    if type_def is bool:
+        return value if isinstance(value, bool) else str(value).lower() == "true"
+    if type_def is str:
+        return str(value)
+    return value
+
+
 def resolve_value_node(value_node: Any, variables: dict[str, Any]) -> Any:
     kind = getattr(value_node, "kind", type(value_node).__name__)
     if kind == "VariableNode" or kind == "Variable" or hasattr(value_node, "variable"):
@@ -216,7 +253,13 @@ def resolve_variables(operation: Any, variables: dict[str, Any]) -> dict[str, An
     coerced = {}
     var_defs = getattr(operation, "variable_definitions", []) or []
     for var_def in var_defs:
-        var_name = var_def.variable.name.value if hasattr(var_def.variable.name, "value") else str(var_def.variable.name)
+        # The parser stores VariableDefinition.name directly. Keep support for
+        # ASTs that wrap it in a Variable node as well.
+        variable = getattr(var_def, "variable", None)
+        name_node = variable if variable is not None else getattr(var_def, "name", None)
+        if hasattr(name_node, "name"):
+            name_node = name_node.name
+        var_name = name_node.value if hasattr(name_node, "value") else str(name_node)
         if var_name in variables:
             coerced[var_name] = variables[var_name]
         elif hasattr(var_def, "default_value") and var_def.default_value:

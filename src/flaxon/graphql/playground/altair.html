@@ -4,62 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Altair - GraphQL Playground</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        #altair-container {
-            height: 100vh;
-        }
-    </style>
+    <base href="https://unpkg.com/altair-static@5.2.1/build/dist/" />
+    <link href="https://unpkg.com/altair-static@5.2.1/build/dist/styles.css" rel="stylesheet" />
 </head>
 <body>
-    <div id="altair-container"></div>
-    <script
-        src="https://unpkg.com/altair-static@5.2.1/build/dist/altair.min.js"
-    ></script>
+    <app-root></app-root>
+    <script src="https://unpkg.com/altair-static@5.2.1/build/dist/runtime.js"></script>
+    <script src="https://unpkg.com/altair-static@5.2.1/build/dist/polyfills.js"></script>
+    <script src="https://unpkg.com/altair-static@5.2.1/build/dist/main.js"></script>
     <script>
-        const altair = Altair({
-            endpointURL: '/graphql',
-            initialQuery: `# Welcome to Altair - GraphQL Playground
-#
-# Explore your Flaxon GraphQL API with this interactive tool.
-# Auto-completion and type checking available!
-
-query {
-  __schema {
-    types {
-      name
-      description
-      fields {
-        name
-        type {
-          name
-        }
-      }
-    }
-  }
-}
-
-# Try a mutation:
-# mutation {
-#   createUser(name: "John Doe", email: "john@example.com") {
-#     id
-#     name
-#     email
-#   }
-# }`,
-            initialHeaders: {
-                'Content-Type': 'application/json',
-            },
-            initialVariables: {},
-            theme: 'dark',
+        window.addEventListener('load', function () {
+            if (window.AltairGraphQL) {
+                window.AltairGraphQL.init({
+                    endpointURL: '/graphql',
+                    initialQuery: '# Flaxon GraphQL API\nquery { __typename }',
+                    initialHeaders: { 'Content-Type': 'application/json' },
+                    initialVariables: {},
+                    disableAccount: true
+                });
+            }
         });
-
-        document.getElementById('altair-container').appendChild(altair);
     </script>
 </body>
 </html>

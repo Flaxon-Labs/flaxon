@@ -159,7 +159,12 @@ def validate_variable_types(schema: Any, document: Any) -> list[GraphQLValidatio
                 var_type_name = _extract_type_name(var_def.type)
                 type_obj = schema.get_type(var_type_name)
                 if not type_obj and var_type_name not in ("String", "Int", "Float", "Boolean", "ID"):
-                    errors.append(GraphQLValidationError(f"Variable '${var_def.variable.name.value}' has unknown type '{var_type_name}'."))
+                    variable = getattr(var_def, "variable", None)
+                    name_node = variable if variable is not None else getattr(var_def, "name", None)
+                    if hasattr(name_node, "name"):
+                        name_node = name_node.name
+                    var_name = name_node.value if hasattr(name_node, "value") else str(name_node)
+                    errors.append(GraphQLValidationError(f"Variable '${var_name}' has unknown type '{var_type_name}'."))
 
     return errors
 

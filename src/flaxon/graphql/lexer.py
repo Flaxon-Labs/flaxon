@@ -118,7 +118,7 @@ class Lexer:
     def _skip_whitespace(self) -> None:
         while self.position < len(self.source):
             char = self.source[self.position]
-            if char == " " or char == "\t":
+            if char == " " or char == "\t" or char == ",":
                 self.position += 1
                 self.column += 1
             elif char == "\n":

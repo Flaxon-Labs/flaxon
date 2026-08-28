@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="/" aria-label="Flaxon Forge home">
+            <span class="brand-mark">F</span><span>flaxon forge</span>
+        </a>
+        <nav>
+            <a href="{{ graphiql_url }}" target="_blank" rel="noreferrer">GraphiQL</a>
+            <a href="/graphql/altair" target="_blank" rel="noreferrer">Altair</a>
+        </nav>
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <div>
+                <p class="eyebrow">Jinax + GraphQL</p>
+                <h1>Build, share, and ship better code.</h1>
+                <p class="lede">A small GitHub-style frontend rendered by Jinax and powered by the Flaxon GraphQL API.</p>
+            </div>
+            <div class="hero-stat"><strong id="repo-count">--</strong><span>repositories</span></div>
+        </section>
+
+        <section class="toolbar" aria-label="Repository controls">
+            <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search repositories" autocomplete="off"></label>
+            <button id="new-repo" class="button primary" type="button">New repository</button>
+        </section>
+
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <section id="repositories" class="repo-grid" aria-live="polite"></section>
+
+        <dialog id="repo-dialog">
+            <form id="repo-form" method="dialog" class="form">
+                <div class="dialog-head"><div><p class="eyebrow">Create repository</p><h2>Start something new</h2></div><button class="icon-button" value="cancel" aria-label="Close">×</button></div>
+                <label>Name<input name="name" required maxlength="80" placeholder="my-project"></label>
+                <label>Description<textarea name="description" rows="3" maxlength="240" placeholder="What are you building?"></textarea></label>
+                <div class="form-actions"><button class="button" value="cancel">Cancel</button><button class="button primary" value="default">Create repository</button></div>
+            </form>
+        </dialog>
+    </main>
+    <script>window.FLAXON_GRAPHQL_URL = {{ graphql_endpoint|tojson }};</script>
+    <script src="/static/js/app.js" defer></script>
+</body>
+</html>
