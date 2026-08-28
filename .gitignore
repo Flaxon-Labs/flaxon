@@ -78,9 +78,7 @@ dmypy.json
 # Linting and Formatting
 # ============================================================
 .ruff_cache/
-.flake8
 .flake8_cache/
-.pylintrc
 .mypy_cache/
 .black_cache/
 
@@ -162,7 +160,6 @@ Desktop.ini
 # ============================================================
 # Docker
 # ============================================================
-.dockerignore
 *.pid
 *.pid.lock
 *.pidfile
@@ -174,14 +171,6 @@ docker-compose.*.yml
 # Package Manager
 # ============================================================
 node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-Cargo.lock
-Gemfile.lock
-composer.lock
-poetry.lock
-uv.lock
 
 # ============================================================
 # Build Outputs
@@ -198,6 +187,26 @@ build/
 *.dll
 *.so
 *.dylib
+
+# ============================================================
+# Local runtime data
+# ============================================================
+# These directories are created by local demos, the admin/CMS showcase, or
+# development servers. Keep their directory structure with a .gitkeep file if
+# it is needed by a checked-in example.
+/uploads/*
+!/uploads/.gitkeep
+/storage/
+/runtime/
+/instance/
+.flaxon/
+
+# Local server and profiler output
+*.pid
+*.pid.lock
+*.pidfile
+*.prof
+*.profraw
 
 # ============================================================
 # Coverage and Reports
