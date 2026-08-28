@@ -105,7 +105,14 @@ def test_rate_limit_middleware_with_retry_after():
 def test_distributed_rate_limiter():
     redis = pytest.importorskip("redis.asyncio", reason="Redis client is not installed")
 
-    redis_client = redis.from_url("redis://localhost:6379/1", decode_responses=True)
+    # Redis 3.x does not implement the RESP3 HELLO handshake.  RESP2 keeps
+    # this integration test compatible with the native Windows Redis package
+    # as well as current Redis releases.
+    redis_client = redis.from_url(
+        "redis://localhost:6379/1",
+        decode_responses=True,
+        protocol=2,
+    )
 
     try:
         limiter = DistributedRateLimiter(redis_client, prefix="test_rate")

@@ -121,13 +121,16 @@ class DistributedRateLimiter:
         window_seconds: int = 60,
     ) -> bool:
         full_key = f"{self.prefix}:{key}"
-        now = int(time.time())
+        now = time.time()
         window_start = now - window_seconds
+        # The member must be unique.  A whole-second timestamp causes Redis
+        # ZADD to overwrite same-second requests instead of counting them.
+        member = str(time.time_ns())
 
         pipeline = self.redis.pipeline()
         pipeline.zremrangebyscore(full_key, 0, window_start)
         pipeline.zcard(full_key)
-        pipeline.zadd(full_key, {str(now): now})
+        pipeline.zadd(full_key, {member: now})
         pipeline.expire(full_key, window_seconds)
         results = await pipeline.execute()
 

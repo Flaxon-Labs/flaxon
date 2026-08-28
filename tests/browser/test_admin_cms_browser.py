@@ -21,7 +21,16 @@ async def test_admin_login_and_cms_create_in_browser(unused_tcp_port):
     AdminDashboard(app, users=[{"username": "admin", "password": "Admin123!"}])
     cms = CMS(app)
     cms.register(ContentType("post", fields=[CMSField("title", required=True)]))
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=unused_tcp_port, log_level="error"))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            app,
+            host="127.0.0.1",
+            port=unused_tcp_port,
+            log_level="error",
+            timeout_graceful_shutdown=1,
+        )
+    )
+    browser = None
     task = asyncio.create_task(server.serve())
     try:
         for _ in range(100):
@@ -30,7 +39,7 @@ async def test_admin_login_and_cms_create_in_browser(unused_tcp_port):
             await asyncio.sleep(0.05)
         assert server.started
         async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=True)
+            browser = await playwright.chromium.launch(headless=True, timeout=15000)
             page = await browser.new_page()
             page.set_default_timeout(15000)
             await page.goto(f"http://127.0.0.1:{unused_tcp_port}/admin/login")
@@ -50,6 +59,10 @@ async def test_admin_login_and_cms_create_in_browser(unused_tcp_port):
             await page.get_by_text("Save", exact=True).click()
             await page.get_by_text("Browser-created post", exact=True).wait_for()
             await browser.close()
+            browser = None
     finally:
+        if browser is not None:
+            await browser.close()
         server.should_exit = True
+        server.force_exit = True
         await task
