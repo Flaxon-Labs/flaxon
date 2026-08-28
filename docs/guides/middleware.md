@@ -53,7 +53,8 @@ app.add_middleware(
 
 # Built-in Middleware
 
-Flaxon includes a collection of production-ready middleware.
+Flaxon includes middleware suitable for production after application-specific
+configuration and testing.
 
 | Middleware | Purpose |
 |------------|---------|

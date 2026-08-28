@@ -159,10 +159,10 @@ Register a WebSocket route.
 ## include_router
 
 ```python
-include_router(router: Router) -> None
+include_router(router: Router, prefix: str | None = None) -> None
 ```
 
-Include routes from another router.
+Include routes from another router, optionally applying a mount prefix.
 
 ---
 

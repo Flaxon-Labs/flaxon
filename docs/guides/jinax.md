@@ -19,7 +19,7 @@ It provides modern HTML rendering while integrating seamlessly with Flaxon's asy
 - Macros
 - Includes
 - Layouts
-- Production-ready performance
+- Jinja2 template caching and configurable reload behavior
 
 ---
 
@@ -150,6 +150,43 @@ templates/home.html
 
 </html>
 ```
+
+---
+
+# Complete copy-paste application
+
+Create `app.py`:
+
+```python
+from flaxon import Flaxon
+from flaxon.jinax import Jinax
+
+app = Flaxon("jinax-example", debug=True)
+app.use_templates(Jinax("templates", auto_reload=True))
+
+@app.get("/")
+async def home(request):
+    return await request.render("home.html", {
+        "title": "Jinax",
+        "items": ["Routing", "Validation", "Templates"],
+    })
+```
+
+Create `templates/home.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{ title }}</title></head>
+<body><h1>{{ title }}</h1>
+<ul>{% for item in items %}<li>{{ item }}</li>{% endfor %}</ul>
+</body>
+</html>
+```
+
+Run `pip install "flaxon[templates]"` and then `flaxon run app:app --reload`.
+Jinax uses Jinja2 autoescaping for HTML templates. Keep database queries and
+permission decisions in routes/services and pass prepared view data to templates.
 
 ---
 

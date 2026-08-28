@@ -123,7 +123,7 @@ async def get_file(file_path: str):
 | `float` | Floating point | `<float:price>` |
 | `path` | Path including `/` | `<path:file>` |
 | `uuid` | UUID value | `<uuid:token>` |
-| `slug` | URL slug | `<slug:article>` |
+| `slug` | URL-safe slug string | `<slug:article>` |
 
 ---
 
@@ -168,6 +168,38 @@ async def posts():
 
 app.include_router(api)
 ```
+
+## Specificity and safe mounts
+
+Literal routes take precedence over parameter routes, regardless of registration
+order. Registration order is retained only when matching routes have equal
+specificity.
+
+```python
+from flaxon import Flaxon, Router
+
+app = Flaxon("routing-example")
+
+@app.get("/admin/<model_name>")
+async def model(model_name: str):
+    return {"model": model_name}
+
+@app.get("/admin/cms")
+async def cms():
+    return {"panel": "cms"}  # wins over /admin/<model_name>
+
+api = Router(prefix="/api")
+
+@api.get("/items/<int:item_id>")
+async def item(item_id: int):
+    return {"id": item_id}
+
+app.include_router(api, prefix="/v1")  # GET /v1/items/7
+```
+
+`include_router(router, prefix=...)` strips the source router prefix before
+applying the mount prefix, so one router can be mounted at multiple locations.
+Overlapping patterns with the same HTTP method produce a registration warning.
 
 Endpoints:
 

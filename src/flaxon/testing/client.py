@@ -137,9 +137,32 @@ class TestClient:
 
     def __init__(self, app: Any, base_url: str = "http://testserver") -> None:
         self.async_client = AsyncTestClient(app, base_url)
+        self._loop: asyncio.AbstractEventLoop | None = None
+
+    def _run(self, coroutine: Any) -> Any:
+        """Reuse one event loop for sync calls instead of creating one per request."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            if self._loop is None or self._loop.is_closed():
+                self._loop = asyncio.new_event_loop()
+            return self._loop.run_until_complete(coroutine)
+        # Preserve a useful error when the sync client is used inside async code.
+        coroutine.close()
+        raise RuntimeError("TestClient cannot make sync requests from a running event loop; use AsyncTestClient")
 
     def request(self, method: str, path: str, **kwargs: Any) -> TestResponse:
-        return asyncio.run(self.async_client.request(method, path, **kwargs))
+        return self._run(self.async_client.request(method, path, **kwargs))
+
+    def close(self) -> None:
+        if self._loop is not None and not self._loop.is_closed():
+            self._loop.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def get(self, path: str, **kwargs: Any) -> TestResponse:
         return self.request("GET", path, **kwargs)

@@ -25,7 +25,7 @@ admin = AdminDashboard(
     app,
     config=AdminConfig(site_title="Acme Backoffice", timezone="UTC"),
     url_prefix="/admin",
-    storage_path="var/admin.sqlite3",
+    storage_path="admin.sqlite3",
     users=[{"username": "admin", "password": "change-me"}],
 )
 
@@ -43,7 +43,8 @@ should be replaced with environment-managed credentials before deployment.
 
 ## Persistence and Migrations
 
-For a self-contained local store, set `storage_path`. This persists users,
+For a self-contained local store, set `storage_path` (the parent directory must
+already exist). This persists users,
 roles, settings, activity, media metadata, CMS records, taxonomies, comments,
 menus, and revisions in the admin store. Do not use the default in-memory mode
 for production or multiple workers.
@@ -115,6 +116,12 @@ admin = AdminDashboard(
 
 Browser forms include a hidden `_csrf` field. SPA mutations include the same
 token in the `X-CSRF-Token` header. Custom clients must preserve this rule.
+
+The backend exposes revision comparison data, menu hierarchy data, media
+metadata operations, scheduled status fields, and notification activity. The
+bundled SPA currently provides reference controls for these APIs; it is not a
+replacement for a complete editorial calendar, visual diff workspace, nested
+menu tree editor, thumbnail pipeline, or inbox notification product.
 
 ## Model Admin
 

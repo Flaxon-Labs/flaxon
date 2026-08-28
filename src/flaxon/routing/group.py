@@ -97,9 +97,9 @@ class RouteGroup:
         """Register a WebSocket route."""
         return self.router.websocket(path, name=name)
 
-    def include_router(self, router: Router) -> None:
+    def include_router(self, router: Router, prefix: str | None = None) -> None:
         """Include routes from another router."""
-        self.router.include_router(router)
+        self.router.include_router(router, prefix=prefix)
 
     def add_middleware(self, middleware_class: type, **options: Any) -> None:
         """Add middleware to this group."""

@@ -37,9 +37,18 @@ class Route:
     endpoint: Callable[..., Any]
     methods: set[str]
     name: str | None = None
+    registration_order: int = 0
 
     def __post_init__(self) -> None:
         self.pattern, self.parameters = compile_path(self.path)
+
+    @property
+    def specificity(self) -> tuple[int, int, int]:
+        """Rank literal routes ahead of parameterized routes."""
+        segments = [segment for segment in self.path.strip("/").split("/") if segment]
+        literal = sum(1 for segment in segments if not _PARAMETER.fullmatch(segment))
+        parameters = len(segments) - literal
+        return (literal, -parameters, len(segments))
 
     def match(self, path: str) -> dict[str, Any] | None:
         """Return typed parameters when the path matches."""

@@ -182,9 +182,9 @@ class Flaxon:
         self._middleware.append((middleware_class, options))
         self._middleware_stack = None
 
-    def include_router(self, router: Router) -> None:
+    def include_router(self, router: Router, prefix: str | None = None) -> None:
         """Include routes registered on another router."""
-        self.router.include_router(router)
+        self.router.include_router(router, prefix=prefix)
 
     def url_for(self, name: str, **params: Any) -> str:
         """Build a URL for a named route."""

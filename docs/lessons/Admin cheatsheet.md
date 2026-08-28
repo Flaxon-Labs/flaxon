@@ -153,8 +153,11 @@ Field types: `text`, `textarea`, `richtext`, `boolean`, `number`, `date`,
 `file`, and `image`.
 
 The SPA supports autosave, unsaved-change warnings, media workflows, revision
-comparison/restore, scheduling, bulk publish/unpublish, taxonomy, comments,
-menus, and CSV/JSON import/export.
+restore, scheduling fields, bulk publish/unpublish, taxonomy, comments, menus,
+and CSV/JSON import/export. Revision comparison data, menu hierarchy data, and
+media metadata are available through APIs; visual diffing, nested drag-and-drop
+editing, thumbnails, editorial calendars, and a full notification inbox are not
+provided as complete built-in workflows.
 
 ## CMS API Shortcuts
 

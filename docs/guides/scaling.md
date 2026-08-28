@@ -165,11 +165,55 @@ For 200 server-rendered pages, use a base template, feature-owned template
 folders, and view models prepared by services/routes. Do not place database
 queries, permission decisions, or network calls inside Jinax templates.
 
+### Copy-paste feature module with Jinax
+
+`Router` keeps a feature's endpoints together, while `Jinax` renders its
+templates through the shared application engine:
+
+```python
+# app/main.py
+from flaxon import Flaxon
+from flaxon.jinax import Jinax
+from app.modules.catalog.routes import router as catalog_router
+
+app = Flaxon("catalog", debug=True)
+app.use_templates(Jinax("app/templates", auto_reload=True))
+app.include_router(catalog_router, prefix="/store")
+```
+
+```python
+# app/modules/catalog/routes.py
+from flaxon import Router
+
+router = Router(prefix="/catalog")
+
+@router.get("")
+async def catalog(request):
+    return await request.render("catalog/index.html", {
+        "title": "Catalog",
+        "products": [{"name": "Starter", "price": 19}],
+    })
+```
+
+This serves `GET /store/catalog`. Create `app/templates/catalog/index.html`:
+
+```html
+<!doctype html>
+<html><head><title>{{ title }}</title></head>
+<body><h1>{{ title }}</h1>
+{% for product in products %}<article>{{ product.name }}: ${{ product.price }}</article>{% endfor %}
+</body></html>
+```
+
+Run `pip install "flaxon[templates]"` and
+`flaxon run app.main:app --reload`.
+
 ## Test by feature and by boundary
 
 - Unit-test services without an ASGI client.
 - Use `TestClient` for routes, middleware, validation, and error responses.
-- Use `AsyncWebSocketClient` for WebSocket protocol tests.
+- Use `AsyncWebSocketClient` for WebSocket protocol tests; use
+  `AsyncTestClient` when the HTTP test itself runs inside an async test.
 - Add integration tests for the real database/cache adapters you choose.
 - Keep regression tests beside the feature that previously failed.
 

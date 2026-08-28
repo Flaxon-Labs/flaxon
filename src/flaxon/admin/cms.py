@@ -461,9 +461,8 @@ class CMS:
             (f"{prefix}/api/comments/<comment_id>", {"PATCH", "DELETE"}, self.api_comment),
             (f"{prefix}/api/menus/<menu_name>", {"GET", "PUT"}, self.api_menu),
         ]
-        for path, methods, handler in reversed(route_specs):
-            route = Route(router._path(path), handler, methods, handler.__name__)
-            router.routes.insert(0, route)
+        for path, methods, handler in route_specs:
+            router.route(path, methods=methods, name=handler.__name__)(handler)
 
     # -- handlers --------------------------------------------------------
 

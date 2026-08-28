@@ -242,9 +242,13 @@ async def protected(request):
 
 ---
 
-# OAuth2
+# OAuth2 protocol helpers
 
-Flaxon supports OAuth2 integrations through configurable providers.
+Flaxon provides configurable OAuth2 protocol helpers for authorization URL
+creation and authorization-code/token refresh requests. They do not create
+login routes, validate callback state, provision users, or establish an
+application session automatically. Your application must implement those
+steps, or use a dedicated identity provider integration.
 
 Example:
 

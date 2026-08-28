@@ -66,7 +66,7 @@ admin = AdminDashboard(
 admin.register(Product, list_display=["name", "price"], fields=["name", "price"])
 ```
 
-`app.enable_admin(...)` is the convenience method for the same dashboard. The dashboard provides authentication, CSRF-protected forms, permissions, users and roles, settings, notifications, audit history, model CRUD, search/filter/sort/pagination, bulk actions, media, taxonomies, comments, menus, revisions, publishing workflows, import/export, and CMS APIs when enabled by configuration and storage. Run `flaxon migrate --direction up` against the configured database before production use. See the linked guide for exact hooks, schemas, routes, and persistence configuration.
+`app.enable_admin(...)` is the convenience method for the same dashboard. The dashboard provides authentication, CSRF-protected forms, permissions, users and roles, settings, audit history, model CRUD, search/filter/sort/pagination, bulk actions, media, taxonomies, comments, menus, revisions, publishing status, import/export, and CMS APIs when enabled by configuration and storage. The bundled CMS UI is a reference client: revision comparison, nested menu editing, media thumbnails, editorial calendars, and a full notification inbox still require application-specific UI/workflow work. Run `flaxon migrate --direction up` against the configured database before production use. See the linked guide for exact hooks, schemas, routes, and persistence configuration.
 
 ## Database adapters
 
