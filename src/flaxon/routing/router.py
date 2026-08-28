@@ -106,12 +106,19 @@ class Router:
         """Copy routes and optionally apply a new mount prefix."""
         mount = (prefix or "").rstrip("/")
         source_prefix = router.prefix.rstrip("/")
-        for source in router.routes:
-            path = source.path
-            if prefix is not None and source_prefix and path.startswith(source_prefix):
+
+        def mounted_path(source_path: str) -> str:
+            path = source_path
+            if prefix is not None and source_prefix and (
+                path == source_prefix or path.startswith(source_prefix + "/")
+            ):
                 path = path[len(source_prefix):] or "/"
             if prefix is not None:
                 path = f"{mount}{path}" if path.startswith("/") else f"{mount}/{path}"
+            return path
+
+        for source in router.routes:
+            path = mounted_path(source.path)
             route = Route(path, source.endpoint, set(source.methods), source.name)
             route.registration_order = self._registration_order
             self._registration_order += 1
@@ -120,7 +127,10 @@ class Router:
             self._match_buckets.setdefault(self._first_segment(route.path), []).append(route)
             if not route.parameters:
                 self._static_routes.setdefault(route.path, []).append(route)
-        self.websocket_routes.extend(router.websocket_routes)
+        for source in router.websocket_routes:
+            self.websocket_routes.append(
+                WebSocketRoute(mounted_path(source.path), source.endpoint, source.name)
+            )
 
     def url_for(self, name: str, **params: Any) -> str:
         """Build a URL from a named route and its parameters."""

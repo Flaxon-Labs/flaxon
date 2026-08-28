@@ -35,6 +35,21 @@ def test_include_router_applies_mount_prefix_without_mutating_source():
     assert source.match("/api/items/42", "GET").params == {"item_id": 42}
 
 
+def test_include_router_applies_mount_prefix_to_websocket_routes():
+    source = Router(prefix="/api")
+
+    @source.websocket("/events/<room_id>")
+    async def events(socket, room_id):
+        return room_id
+
+    destination = Router()
+    destination.include_router(source, prefix="/v1")
+
+    match = destination.match_websocket("/v1/events/general")
+    assert match.params == {"room_id": "general"}
+    assert source.match_websocket("/api/events/general").params == {"room_id": "general"}
+
+
 def test_collision_warning_is_emitted_but_non_overlapping_routes_are_silent(caplog):
     router = Router()
     caplog.set_level(logging.WARNING, logger="flaxon.routing.router")

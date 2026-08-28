@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title }}</title><link rel="stylesheet" href="/static/chat.css">
+</head>
+<body>
+  <main class="shell">
+    <aside class="sidebar"><div class="brand"><span class="mark">F</span><span>Flaxon Chat</span></div><div class="profile"><span class="avatar">G</span><div><strong id="user-label">Guest</strong><small>Available</small></div></div><button class="room active" data-room="general"><span class="avatar teal">G</span><span><strong>General</strong><small id="room-status">Ready to connect</small></span></button></aside>
+    <section class="chat"><header class="chat-head"><div><h1>General</h1><span id="connection-state">Connecting...</span></div><span class="secure">Private room</span></header><div id="messages" class="messages" aria-live="polite"></div><div id="typing" class="typing"></div><form id="composer" class="composer"><input id="message" maxlength="4000" autocomplete="off" placeholder="Write a message..."><button aria-label="Send message">Send</button></form></section>
+  </main>
+  <script>window.FLAXON_CHAT={websocketPath:{{ websocket_path|tojson }}};</script><script src="/static/chat.js"></script>
+</body>
+</html>
