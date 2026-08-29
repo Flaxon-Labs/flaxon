@@ -1,0 +1,1 @@
+# the a Example that shows how to used mail in Flaxon

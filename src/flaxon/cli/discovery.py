@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import os
+import sys
 from pathlib import Path
 from typing import Any
 from .base import Command
@@ -45,6 +46,10 @@ class CommandDiscovery:
 
     def discover(self) -> list[Command]:
         commands = list(self._builtin_commands)
+
+        cwd = os.getcwd()
+        if cwd not in sys.path:
+            sys.path.insert(0, cwd)
 
         try:
             import flaxon_cli
