@@ -18,7 +18,16 @@ class FileStorage:
         self.base_path.mkdir(parents=True, exist_ok=True)
 
     def _safe_path(self, path: str = "", filename: str | None = None) -> Path:
-        candidate = self.base_path / path / (filename or "")
+        # Normalize backslashes to forward slashes before resolving, so a
+        # Windows-style traversal payload (e.g. "..\\outside") is treated
+        # as a parent-directory reference regardless of the host OS --
+        # pathlib.resolve() only treats backslash as a separator on
+        # Windows, so without this a "..\\outside" payload would only be
+        # caught on a Windows-hosted deployment, silently accepted (as a
+        # literal, oddly-named subdirectory) everywhere else.
+        safe_path = (path or "").replace("\\", "/")
+        safe_filename = (filename or "").replace("\\", "/")
+        candidate = self.base_path / safe_path / safe_filename
         resolved_base = self.base_path.resolve()
         resolved = candidate.resolve()
         if resolved != resolved_base and resolved_base not in resolved.parents:
