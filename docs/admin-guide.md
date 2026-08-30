@@ -2,6 +2,10 @@
 
 # Flaxon Admin Dashboard Guide
 
+For a copy-paste lesson focused on industrial customization, custom pages,
+permissions, workflows, persistence, and testing, see
+[Industrial Admin Customization](lessons/Industrial%20Admin%20Customization.md).
+
 > For the current implementation, including persistent storage, migrations,
 > authentication, CSRF, roles, media, revisions, CMS workflows, and custom
 > clients, start with [Admin and CMS Production Guide](guides/admin-cms.md).

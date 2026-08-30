@@ -1,5 +1,7 @@
 # Flaxon Features
 
+For a complete industrial Admin customization walkthrough, see [Industrial Admin Customization](Industrial%20Admin%20Customization.md).
+
 This page is a runnable feature map. For complete Admin/CMS guidance, see [Admin and CMS](../guides/admin-cms.md), [Admin API](../api/admin-cms.md), and the [Admin cheatsheet](Admin%20cheatsheet.md).
 
 ## Application and routing
