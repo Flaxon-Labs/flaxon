@@ -344,6 +344,7 @@ class AdminDashboard:
         if action is None:
             raise NotFound(f"Unknown action '{action_name}'.")
         form = await request.form()
+        self.validate_csrf(form.to_dict())
         ids = form.get_list("ids") if hasattr(form, "get_list") else []
         result = action(ids) if callable(action) else None
         if hasattr(result, "__await__"):

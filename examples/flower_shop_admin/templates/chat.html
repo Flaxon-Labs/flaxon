@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title><link rel="stylesheet" href="/shop-static/shop.css">
+</head>
+<body>
+  <main class="chat-shell">
+    <a class="back" href="/">Back to shop</a>
+    <p class="eyebrow">SHOP FLOOR / LIVE ROOM</p><h1>{{ title }}</h1>
+    <p id="status" class="status">Connecting...</p>
+    <section id="messages" class="messages" aria-live="polite"></section>
+    <form id="chat-form" class="composer"><input id="message" autocomplete="off" maxlength="4000" placeholder="Message the team..."><button>Send</button></form>
+  </main>
+  <script src="/shop-static/chat.js"></script>
+</body>
+</html>

@@ -1,6 +1,11 @@
   const API_BASE = window.FLAXON_CMS_API_BASE || "__CMS_API_BASE__";
   const CSRF_TOKEN = window.FLAXON_CMS_CSRF_TOKEN || "__CMS_CSRF_TOKEN__";
 
+    function csrfToken() {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      return (meta && meta.content) || window.FLAXON_CMS_CSRF_TOKEN || CSRF_TOKEN;
+    }
+
     function cmsApp() {
       return {
         title: "__CMS_TITLE__",
@@ -68,7 +73,7 @@
           try {
             const request = () => fetch(API_BASE + path, {
               ...options,
-              headers: { "Content-Type": "application/json", ...(CSRF_TOKEN ? { "X-CSRF-Token": CSRF_TOKEN } : {}), ...(options.headers || {}) },
+              headers: { "Content-Type": "application/json", ...(csrfToken() ? { "X-CSRF-Token": csrfToken() } : {}), ...(options.headers || {}) },
             });
             let res = await request();
             if (res.status >= 500) { await new Promise(resolve => setTimeout(resolve, 250)); res = await request(); }

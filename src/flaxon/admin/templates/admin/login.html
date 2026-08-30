@@ -21,7 +21,7 @@
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <label>Username<input name="username" required autofocus autocomplete="username"></label>
         <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
-        <label>Authenticator code <span>optional</span><input name="otp" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code"></label>
+        <label>Authenticator code <span>required when MFA is enabled</span><input name="otp" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code"></label>
         <button class="login-submit">Sign in</button>
       </form>
       <a href="{{ reset_url }}" class="login-recovery">Forgot your password?</a>

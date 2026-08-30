@@ -61,6 +61,7 @@ class ChangeListView(AdminView):
                 if self._can_action(name)
             },
             "user": getattr(self.request, "user", None),
+            "request": self.request,
             "query": self.request.query.get("q", ""),
             "pagination": query_result or {"total": len(objects), "pages": 1, "page": 1, "per_page": len(objects)},
         }
