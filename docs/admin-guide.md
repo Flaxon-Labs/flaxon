@@ -2202,3 +2202,95 @@ Flaxon
 10. Deploy to production.
 
 ---
+
+# Admin Hardening Addendum
+
+This section documents the production hardening APIs added after the original
+Admin examples. Add these options when the Admin is deployed with multiple
+workers or security-sensitive data:
+
+```python
+from flaxon.admin import AdminDashboard
+
+admin = AdminDashboard(
+    app,
+    storage_path="var/admin.sqlite3",
+    redis_url="redis://127.0.0.1:6379/0",
+    redis_protocol=2,                 # use 3 when the Redis server supports RESP3
+    redis_max_connections=100,
+    session_idle_timeout=1800,
+    max_upload_size=25 * 1024 * 1024,
+    media_scanner=lambda data, content_type: True,
+)
+```
+
+`redis_url` enables shared Admin sessions, distributed Admin request limits,
+distributed password-reset/MFA limits, CMS publishing locks, and shared
+WebSocket broadcasting. Configure Redis before starting every worker.
+
+## Durable Jobs and Thumbnails
+
+With `storage_path` configured, large-image thumbnail work is recorded as a
+`media.thumbnail` durable job and processed by the registered Admin job worker.
+Inspect jobs through the operations page or the `DurableJobStore` API:
+
+```python
+from flaxon.admin import DurableJobStore, DurableJobWorker
+
+jobs = DurableJobStore(admin.store)
+worker = DurableJobWorker(jobs)
+worker.register("reports.generate", generate_report)
+jobs.enqueue("reports.generate", {"report_id": "42"}, max_attempts=5)
+await worker.run_once()
+```
+
+Jobs retain status, attempts, errors, and retry timing. For independent
+multi-process workers, run the worker loop in a dedicated process and use a
+shared database/Redis-backed repository.
+
+## Resumable Media Uploads
+
+The Admin media API supports create, chunk, and complete operations. Every
+mutation requires `X-CSRF-Token`:
+
+```text
+POST  /admin/media/resumable
+PATCH /admin/media/resumable/{upload_id}       Upload-Offset: 0
+POST  /admin/media/resumable/{upload_id}/complete
+```
+
+Create the upload with JSON containing `filename`, `total_size`, and optional
+`sha256`; send raw bytes for each PATCH chunk. Completion rejects incomplete or
+digest-mismatched uploads. Configure `media_scanner` with ClamAV or another
+real antivirus service; the callback must return `False` for an unsafe file.
+
+S3-compatible adapters can expose `get_signed_url(path, expires_in)` for
+private assets. Do not expose bucket credentials to browser code.
+
+## Audit, Notifications, and WebAuthn
+
+`ImmutableAuditLog` stores hash-chained entries containing actor, IP address,
+user-agent, action, and details. Verify the chain with:
+
+```text
+GET /admin/audit/verify
+```
+
+`NotificationService` stores per-user preferences and delivery records. Use
+`set_preferences(username, {"email": True, "webhook": False})` and provide a
+channel sender to `publish`. Delivery adapters remain application-owned so
+SMTP, webhooks, and push providers can be selected safely.
+
+WebAuthn requires an injected provider backed by a maintained WebAuthn library;
+Flaxon stores credential metadata and delegates challenge creation and
+assertion verification to that provider. It never accepts an unverified client
+assertion directly.
+
+## UI and Three.js Reliability
+
+The Three.js background is decorative only. The Admin remains functional when
+the CDN is blocked, WebGL is unavailable, the browser requests reduced motion,
+or the tab is hidden. The renderer pauses in hidden tabs, handles context loss,
+caps pixel ratio, and disposes resources on page exit. Custom themes and Admin
+pages must keep the same rule: visual effects cannot be a dependency for
+authentication, notifications, or form submission.

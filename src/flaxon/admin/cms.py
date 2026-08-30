@@ -1,6 +1,5 @@
 """flaxon.admin.cms — a small, self-contained CMS for the Flaxon admin.
 
-Drop this file plus cms.html next to it, then wire it up like AdminDashboard:
 
     from flaxon.admin.cms import CMS, ContentType, CMSField
 
@@ -36,12 +35,13 @@ import uuid
 import csv
 import io
 import json
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from flaxon.exceptions import BadRequest, NotFound
+from flaxon.exceptions import BadRequest, Forbidden, NotFound
 from flaxon.http import HTMLResponse, JSONResponse, Request, Response
 from flaxon.security import Sanitizer
 from .services import AdminAuth
@@ -50,6 +50,10 @@ _PACKAGE_DIR = Path(__file__).parent
 _DEFAULT_TEMPLATE_PATH = _PACKAGE_DIR / "templates" / "admin" / "cms.html"
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
+_COMMENT_STATUSES = {"pending", "approved", "rejected", "spam"}
+_MAX_COMMENT_BODY = 10_000
+_MAX_MENU_ITEMS = 100
+_MAX_MENU_DEPTH = 5
 
 
 def slugify(value: str) -> str:
@@ -282,6 +286,17 @@ class ContentType:
                 record["status"] = status
                 record["updated_at"] = _now()
 
+    def publish_due(self, now: str | None = None) -> list[dict[str, Any]]:
+        """Publish scheduled records whose publish time has arrived."""
+        current = now or _now()
+        published: list[dict[str, Any]] = []
+        for record in self.items.values():
+            if self.has_status and record.get("status") == "scheduled" and record.get("publish_at") and record["publish_at"] <= current:
+                record["status"] = "published"
+                record["updated_at"] = current
+                published.append(record)
+        return published
+
     def run_action(self, name: str, ids: list[str]) -> None:
         action = self._actions.get(name)
         if action is None:
@@ -297,10 +312,7 @@ class ContentType:
         page: int = 1,
         per_page: int = 20,
     ) -> dict[str, Any]:
-        now = _now()
-        for record in self.items.values():
-            if self.has_status and record.get("status") == "scheduled" and record.get("publish_at") and record["publish_at"] <= now:
-                record["status"] = "published"
+        self.publish_due()
         records = list(self.items.values())
 
         if q:
@@ -360,6 +372,11 @@ class CMS:
         template_path: str | Path | None = None,
         auth: AdminAuth | None = None,
         database: Any | None = None,
+        publish_interval: float = 30.0,
+        redis_url: str | None = None,
+        redis_protocol: int = 2,
+        redis_max_connections: int = 100,
+        publisher_lock_ttl: int = 60,
     ) -> None:
         self.app = app
         self.url_prefix = url_prefix.rstrip("/")
@@ -368,6 +385,14 @@ class CMS:
         self.auth = auth or getattr(app, "_flaxon_admin_auth", None)
         self.store = getattr(app, "_flaxon_admin_store", None)
         self.database = database or getattr(app, "database", None) or getattr(app, "db", None)
+        self.publish_interval = max(1.0, publish_interval)
+        self.redis_url = redis_url
+        self.redis_protocol = redis_protocol
+        self.redis_max_connections = redis_max_connections
+        self.publisher_lock_ttl = max(5, publisher_lock_ttl)
+        self._publisher_redis: Any = None
+        self._publisher_lock_key = f"flaxon:cms:publisher:{self.url_prefix}"
+        self._publish_task: Any = None
         self._database_loaded = False
         self.content_types: dict[str, ContentType] = {}
         self.taxonomies: dict[str, dict[str, list[str]]] = {}
@@ -380,6 +405,55 @@ class CMS:
             self.menus = self.store.get("cms", "menus", {})
         self._mount_static()
         self._register_routes()
+        if hasattr(self.app, "on_startup"):
+            self.app.on_startup(self._start_publisher)
+            self.app.on_shutdown(self._stop_publisher)
+
+    async def _start_publisher(self) -> None:
+        self._publish_task = __import__("asyncio").create_task(self._publish_loop())
+
+    async def _stop_publisher(self) -> None:
+        if self._publish_task is not None:
+            self._publish_task.cancel()
+            with __import__("contextlib").suppress(__import__("asyncio").CancelledError):
+                await self._publish_task
+            self._publish_task = None
+        if self._publisher_redis is not None:
+            await self._publisher_redis.aclose()
+            self._publisher_redis = None
+
+    async def _publisher_lock(self) -> tuple[Any, str] | None:
+        if not self.redis_url:
+            return None
+        if self._publisher_redis is None:
+            import redis.asyncio as redis
+            self._publisher_redis = redis.from_url(self.redis_url, decode_responses=True, protocol=self.redis_protocol, max_connections=self.redis_max_connections)
+        token = secrets.token_urlsafe(24)
+        acquired = await self._publisher_redis.set(self._publisher_lock_key, token, nx=True, ex=self.publisher_lock_ttl)
+        return (self._publisher_redis, token) if acquired else None
+
+    async def _release_publisher_lock(self, lock: tuple[Any, str] | None) -> None:
+        if lock is None:
+            return
+        client, token = lock
+        await client.eval("if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end", 1, self._publisher_lock_key, token)
+
+    async def _publish_loop(self) -> None:
+        import asyncio
+        while True:
+            lock = await self._publisher_lock()
+            if not self.redis_url or lock is not None:
+                try:
+                    changed = False
+                    for content_type in self.content_types.values():
+                        if content_type.publish_due():
+                            changed = True
+                            await self._save_content(content_type)
+                    if changed:
+                        await asyncio.sleep(0)
+                finally:
+                    await self._release_publisher_lock(lock)
+            await asyncio.sleep(self.publish_interval)
 
     def _mount_static(self) -> None:
         if hasattr(self.app, "mount_static"):
@@ -388,7 +462,10 @@ class CMS:
 
     def register(self, content_type: ContentType) -> ContentType:
         if self.store:
-            content_type.items.update(self.store.get(f"cms:{content_type.name}", "items", {}))
+            stored = self.store.get(f"cms:{content_type.name}", "items", {}) or {}
+            if isinstance(stored, dict):
+                content_type.items.update({key: value for key, value in stored.items() if key != "__revisions__"})
+                content_type.revisions.extend(stored.get("__revisions__", []))
         self.content_types[content_type.name] = content_type
         return content_type
 
@@ -403,7 +480,11 @@ class CMS:
 
     def _save(self, content_type: ContentType) -> None:
         if self.store:
-            self.store.set(f"cms:{content_type.name}", "items", content_type.items)
+            self.store.set(
+                f"cms:{content_type.name}",
+                "items",
+                {**content_type.items, "__revisions__": content_type.revisions},
+            )
 
     def _save_resources(self) -> None:
         if self.store:
@@ -467,7 +548,7 @@ class CMS:
     # -- handlers --------------------------------------------------------
 
     async def spa(self, request: Request) -> Response:
-        await self._require_user(request)
+        await self._require_user(request, "admin:read")
         html = self.template_path.read_text(encoding="utf-8")
         html = html.replace("__CMS_API_BASE__", f"{self.url_prefix}/api")
         html = html.replace("__CMS_TITLE__", self.title)
@@ -476,18 +557,34 @@ class CMS:
         return HTMLResponse(html)
 
     async def api_config(self, request: Request) -> Response:
-        await self._require_user(request)
+        user = await self._require_user(request, "admin:read")
+        types = []
+        for content_type in self.content_types.values():
+            schema = content_type.schema()
+            capabilities = {}
+            for action in ("read", "create", "update", "delete"):
+                try:
+                    self.auth.authorize(user, f"{content_type.name}:{action}")
+                    capabilities[action] = True
+                except Forbidden:
+                    try:
+                        self.auth.authorize(user, "admin:read" if action == "read" else "admin:write")
+                        capabilities[action] = True
+                    except Forbidden:
+                        capabilities[action] = False
+            schema["capabilities"] = capabilities
+            types.append(schema)
         return JSONResponse({
             "title": self.title,
-            "types": [ct.schema() for ct in self.content_types.values()],
+            "types": types,
         })
 
     async def api_stats(self, request: Request) -> Response:
-        await self._require_user(request)
+        await self._require_user(request, "admin:read")
         return JSONResponse({name: ct.stats() for name, ct in self.content_types.items()})
 
     async def api_list(self, request: Request, type_name: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "read")
         ct = self._get_type(type_name)
         query = request.query
         filters = {key[len("filter_"):]: value for key, value in query.items() if key.startswith("filter_")}
@@ -501,7 +598,7 @@ class CMS:
         return JSONResponse(result)
 
     async def api_create(self, request: Request, type_name: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "create")
         ct = self._get_type(type_name)
         data = await self._body_data(request)
         if isinstance(data, dict):
@@ -519,12 +616,12 @@ class CMS:
         return JSONResponse(record, status_code=201)
 
     async def api_get(self, request: Request, type_name: str, item_id: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "read")
         ct = self._get_type(type_name)
         return JSONResponse(ct.get(item_id))
 
     async def api_update(self, request: Request, type_name: str, item_id: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "update")
         ct = self._get_type(type_name)
         data = await self._body_data(request)
         record = ct.update(item_id, self.run_hook("before_update", data or {}))
@@ -534,7 +631,7 @@ class CMS:
         return JSONResponse(record)
 
     async def api_delete(self, request: Request, type_name: str, item_id: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "delete")
         ct = self._get_type(type_name)
         deleted = ct.delete(item_id)
         self.run_hook("after_delete", {"type": type_name, "id": item_id, "deleted": deleted})
@@ -545,7 +642,7 @@ class CMS:
         return JSONResponse({"deleted": True})
 
     async def api_action(self, request: Request, type_name: str, action_name: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "update")
         ct = self._get_type(type_name)
         body = await request.json() or {}
         ids = body.get("ids", [])
@@ -557,7 +654,7 @@ class CMS:
         return JSONResponse({"ok": True, "affected": len(ids)})
 
     async def api_restore(self, request: Request, type_name: str, item_id: str, revision: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "update")
         ct = self._get_type(type_name)
         record = ct.restore(item_id, int(revision))
         self._save(ct)
@@ -565,7 +662,7 @@ class CMS:
         return JSONResponse(record)
 
     async def api_export(self, request: Request, type_name: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "read")
         ct = self._get_type(type_name)
         fmt = request.query.get("format", "json").lower()
         records = list(ct.items.values())
@@ -578,7 +675,7 @@ class CMS:
         return JSONResponse(records, headers={"content-disposition": f"attachment; filename={type_name}.json"})
 
     async def api_import(self, request: Request, type_name: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "create")
         ct = self._get_type(type_name)
         if "text/csv" in request.headers.get("content-type", ""):
             data = list(csv.DictReader(io.StringIO(await request.text())))
@@ -601,7 +698,7 @@ class CMS:
         return JSONResponse({"imported": len(created), "items": created, "errors": errors}, status_code=201 if created else 422)
 
     async def api_taxonomies(self, request: Request) -> Response:
-        await self._require_user(request)
+        await self._require_user(request, "admin:read" if request.method == "GET" else "admin:write")
         if request.method == "POST":
             body = await request.json() or {}
             name = str(body.get("name", "")).strip()
@@ -614,7 +711,7 @@ class CMS:
         return JSONResponse(self.taxonomies)
 
     async def api_taxonomy(self, request: Request, taxonomy_name: str) -> Response:
-        await self._require_user(request)
+        await self._require_user(request, "admin:write")
         if taxonomy_name not in self.taxonomies:
             raise NotFound("Taxonomy not found.")
         if request.method == "DELETE":
@@ -633,10 +730,22 @@ class CMS:
         return JSONResponse(self.taxonomies)
 
     async def api_comments(self, request: Request) -> Response:
-        await self._require_user(request)
+        await self._require_user(request, "admin:read" if request.method == "GET" else "admin:write")
         if request.method == "POST":
             body = await request.json() or {}
-            comment = {"id": uuid.uuid4().hex[:12], "status": "pending", "created_at": _now(), **body}
+            text = str(body.get("body", "")).strip()
+            if not text or len(text) > _MAX_COMMENT_BODY:
+                raise BadRequest("Comment body is required and must be at most 10000 characters.")
+            comment = {
+                "id": uuid.uuid4().hex[:12],
+                "content_type": str(body.get("content_type", ""))[:150],
+                "record_id": str(body.get("record_id", ""))[:150],
+                "author_name": str(body.get("author_name", ""))[:150],
+                "author_email": Sanitizer.sanitize_email(str(body.get("author_email", "")))[:320],
+                "body": Sanitizer.allow_html(text),
+                "status": "pending",
+                "created_at": _now(),
+            }
             self.comments.append(comment)
             self._save_resources()
             await self._save_all_resources()
@@ -644,38 +753,96 @@ class CMS:
         return JSONResponse(self.comments)
 
     async def api_comment(self, request: Request, comment_id: str) -> Response:
-        await self._require_user(request)
+        await self._require_user(request, "admin:write")
         comment = next((item for item in self.comments if item["id"] == comment_id), None)
         if comment is None:
             raise NotFound("Comment not found.")
         if request.method == "DELETE":
             self.comments.remove(comment); self._save_resources(); await self._save_all_resources(); return JSONResponse({"deleted": True})
-        comment.update(await request.json() or {})
+        body = await request.json() or {}
+        if "status" in body:
+            status = str(body["status"])
+            if status not in _COMMENT_STATUSES:
+                raise BadRequest("Invalid comment status.")
+            comment["status"] = status
+        for key, limit in (("body", _MAX_COMMENT_BODY), ("author_name", 150), ("author_email", 320)):
+            if key not in body:
+                continue
+            value = str(body[key]).strip()
+            if len(value) > limit:
+                raise BadRequest(f"Comment {key} is too long.")
+            comment[key] = Sanitizer.allow_html(value) if key == "body" else (
+                Sanitizer.sanitize_email(value) if key == "author_email" else value
+            )
         self._save_resources()
         await self._save_all_resources()
         return JSONResponse(comment)
 
     async def api_menu(self, request: Request, menu_name: str) -> Response:
-        await self._require_user(request)
+        await self._require_user(request, "admin:read" if request.method == "GET" else "admin:write")
         if request.method == "PUT":
             items = await request.json()
             if not isinstance(items, list):
                 raise BadRequest("Menu must be a list.")
-            self.menus[menu_name] = items
+            self.menus[menu_name] = self._validate_menu_items(items)
             self._save_resources()
             await self._save_all_resources()
         return JSONResponse({"name": menu_name, "items": self.menus.get(menu_name, [])})
 
+    @staticmethod
+    def _validate_menu_items(items: list[Any], depth: int = 0, count: list[int] | None = None) -> list[dict[str, Any]]:
+        """Normalize menu input and bound recursive payload size."""
+        if depth > _MAX_MENU_DEPTH:
+            raise BadRequest("Menu nesting is too deep.")
+        count = count or [0]
+        normalized: list[dict[str, Any]] = []
+        for item in items:
+            if not isinstance(item, dict):
+                raise BadRequest("Each menu item must be an object.")
+            count[0] += 1
+            if count[0] > _MAX_MENU_ITEMS:
+                raise BadRequest("Menu contains too many items.")
+            label = str(item.get("label", "")).strip()
+            url = str(item.get("url", "")).strip()
+            if not label or len(label) > 150 or len(url) > 500:
+                raise BadRequest("Menu labels and URLs are invalid.")
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                raise BadRequest("Menu children must be a list.")
+            normalized.append({
+                "label": label,
+                "url": url,
+                "children": CMS._validate_menu_items(children, depth + 1, count),
+            })
+        return normalized
+
     async def api_history(self, request: Request, type_name: str, item_id: str) -> Response:
-        await self._require_user(request)
+        await self._require_content_user(request, type_name, "read")
         ct = self._get_type(type_name)
         return JSONResponse({"items": ct.compare_revisions(item_id)})
 
-    async def _require_user(self, request: Request) -> Any:
+    async def _require_user(self, request: Request, permission: str) -> Any:
         await self._load_database()
         if self.auth is None:
             return None
         user = await self.auth.current_user(request)
+        self.auth.authorize(user, permission)
+        if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            dashboard = getattr(self.app, "_flaxon_admin_dashboard", None)
+            if dashboard and not dashboard.csrf.verify_token(request.headers.get("x-csrf-token", "")):
+                raise BadRequest("CSRF token missing or invalid")
+        return user
+
+    async def _require_content_user(self, request: Request, type_name: str, action: str) -> Any:
+        """Authorize a content action while preserving admin-wide roles."""
+        await self._load_database()
+        if self.auth is None:
+            return None
+        user = await self.auth.current_user(request)
+        try:
+            self.auth.authorize(user, f"{type_name}:{action}")
+        except Forbidden:
+            self.auth.authorize(user, "admin:read" if action == "read" else "admin:write")
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
             dashboard = getattr(self.app, "_flaxon_admin_dashboard", None)
             if dashboard and not dashboard.csrf.verify_token(request.headers.get("x-csrf-token", "")):

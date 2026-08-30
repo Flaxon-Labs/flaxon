@@ -147,7 +147,4 @@
     // ============================================================
     // INITIALIZATION
     // ============================================================
-    console.log('%c Flaxon Admin ', 'background: #0f172a; color: #60a5fa; font-size: 16px; font-weight: bold; padding: 8px 16px; border-radius: 8px;');
-    console.log('%c Simple Python. Serious Applications. ', 'color: #94a3b8; font-size: 12px;');
-
 })();

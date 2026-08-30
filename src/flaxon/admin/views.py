@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from flaxon.http import HTMLResponse, RedirectResponse, Request
+from flaxon.exceptions import Conflict
 
 
 class AdminView:
@@ -55,12 +56,29 @@ class ChangeListView(AdminView):
             "list_display": self.admin_model.list_display,
             "list_filter": self.admin_model.list_filter,
             "search_fields": self.admin_model.search_fields,
-            "actions": self.admin_model.get_actions(),
+            "actions": {
+                name: action for name, action in self.admin_model.get_actions().items()
+                if self._can_action(name)
+            },
             "user": getattr(self.request, "user", None),
             "query": self.request.query.get("q", ""),
             "pagination": query_result or {"total": len(objects), "pages": 1, "page": 1, "per_page": len(objects)},
         }
         return await self.dashboard.jinax.render_response("admin/list.html", context)
+
+    def _can_action(self, action_name: str) -> bool:
+        user = getattr(self.request, "user", None)
+        if user is None:
+            return False
+        try:
+            self.dashboard.auth.authorize(user, f"{self.admin_model.get_name()}:{action_name}")
+            return True
+        except Exception:
+            try:
+                self.dashboard.auth.authorize(user, "admin:superuser")
+                return True
+            except Exception:
+                return False
 
 
 class DetailView(AdminView):
@@ -95,6 +113,14 @@ class CreateView(AdminView):
                 form_data = form_data.to_dict()
             form_data = self.dashboard.validate_csrf(form_data)
 
+            expected_version = form_data.pop("_version", None)
+            if expected_version is not None and hasattr(model_class, "get_instance"):
+                current = model_class.get_instance(self.object_id)
+                current = await current if hasattr(current, "__await__") else current
+                current_version = current.get("updated_at") if isinstance(current, dict) else getattr(current, "updated_at", None)
+                if str(expected_version) != str(current_version):
+                    raise Conflict("This record was changed by another user. Reload before saving.")
+
             # Hook for model saving instance if supported by model manager
             model_class = self.admin_model.model
             result = None
@@ -116,6 +142,7 @@ class CreateView(AdminView):
             "verbose_name": self.admin_model.get_verbose_name(),
             "fields": self.admin_model.fields,
             "readonly_fields": self.admin_model.readonly_fields,
+            "version": (obj.get("updated_at") if isinstance(obj, dict) else getattr(obj, "updated_at", "")) if obj is not None else "",
             "user": getattr(self.request, "user", None),
         }
         return await self.dashboard.jinax.render_response("admin/add.html", context)

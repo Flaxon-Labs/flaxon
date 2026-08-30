@@ -486,3 +486,26 @@ def to_dict() -> dict[str, Any]
 
 Convert result to dictionary.
 
+---
+
+# Admin Durable Jobs
+
+The Admin production layer exposes a small persistent job contract for work
+such as thumbnail generation. It uses the configured AdminStore and records
+retry state, errors, and completion:
+
+```python
+from flaxon.admin import DurableJobStore, DurableJobWorker
+
+jobs = DurableJobStore(admin.store)
+worker = DurableJobWorker(jobs)
+worker.register("media.thumbnail", make_thumbnail)
+job = jobs.enqueue("media.thumbnail", {"relative": "images/photo.jpg"}, max_attempts=4)
+await worker.run_once()
+```
+
+Handlers are registered by name so the worker can be started separately from
+the web process. For multiple workers, use a shared persistent store and add a
+distributed claim/lease implementation appropriate to the database or Redis
+deployment.
+

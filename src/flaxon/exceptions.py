@@ -54,6 +54,13 @@ class BadRequest(HTTPException):
         super().__init__(400, detail)
 
 
+class Conflict(HTTPException):
+    """Raised when a resource changed during an optimistic update."""
+
+    def __init__(self, detail: str = "Resource conflict") -> None:
+        super().__init__(409, detail)
+
+
 class Unauthorized(HTTPException):
     """Raised when authentication is required or invalid."""
 

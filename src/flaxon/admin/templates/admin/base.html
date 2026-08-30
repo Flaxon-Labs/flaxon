@@ -69,7 +69,7 @@
                         </a>
                     </div>
                     <div x-show="notificationsOpen" x-cloak @click.outside="notificationsOpen = false" class="absolute right-4 top-14 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-700 bg-slate-800 shadow-2xl">
-                        <div class="flex items-center justify-between border-b border-slate-700 px-4 py-3"><strong class="text-sm">Notifications</strong><a href="{{ base_prefix if base_prefix is defined else (dashboard.url_prefix if dashboard else '/admin') }}/activity" class="text-xs text-blue-400">View activity</a></div>
+                        <div class="flex items-center justify-between border-b border-slate-700 px-4 py-3"><strong class="text-sm">Notifications</strong><div class="flex gap-3"><button @click="markNotificationsRead()" class="text-xs text-blue-400">Mark read</button><a href="{{ base_prefix if base_prefix is defined else (dashboard.url_prefix if dashboard else '/admin') }}/activity" class="text-xs text-blue-400">View activity</a></div></div>
                         <div class="max-h-80 overflow-y-auto p-2"><template x-for="item in notifications" :key="item.timestamp + item.action"><div class="border-b border-slate-700/60 px-2 py-3 last:border-0"><p class="text-sm" x-text="formatNotification(item)"></p><p class="mt-1 text-xs text-slate-400" x-text="item.timestamp"></p></div></template><p x-show="!notifications.length" class="px-2 py-5 text-center text-sm text-slate-400">No recent activity.</p></div>
                     </div>
                 </div>
@@ -140,7 +140,7 @@
                 notifications: [],
                 notificationsOpen: false,
                 init() {
-                    initThreeJS();
+                    try { initThreeJS(); } catch (_) { /* Decorative WebGL must never break Admin controls. */ }
                     this.applyTheme();
                     this.loadNotifications();
                 },
@@ -157,6 +157,12 @@
                             this.notifications = data.items || [];
                         }
                     } catch (_) { /* Notifications are non-blocking UI. */ }
+                },
+                async markNotificationsRead() {
+                    const ids = this.notifications.map(item => item.id);
+                    if (!ids.length) return;
+                    const response = await fetch('{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else "/admin") }}/notifications', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '{{ dashboard.csrf_token() if dashboard else "" }}' }, body: JSON.stringify({ ids }) });
+                    if (response.ok) this.notifications = [];
                 },
                 toggleNotifications() {
                     this.notificationsOpen = !this.notificationsOpen;
@@ -177,14 +183,23 @@
 
         function initThreeJS() {
             const container = document.getElementById('three-container');
-            if (!container) return;
+            if (!container || typeof THREE === 'undefined') return null;
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+            if (navigator.connection && navigator.connection.saveData) return null;
 
+            let renderer;
+            try {
+                renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
+            } catch (_) {
+                return null;
+            }
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+            renderer.setSize(window.innerWidth, window.innerHeight, false);
+            renderer.domElement.setAttribute('aria-hidden', 'true');
+            renderer.domElement.setAttribute('role', 'presentation');
+            container.replaceChildren(renderer.domElement);
 
             const geometry = new THREE.BufferGeometry();
             const count = 1500;
@@ -208,19 +223,44 @@
 
             camera.position.z = 30;
 
+            let frame = 0;
+            let active = document.visibilityState === 'visible';
             function animate() {
-                requestAnimationFrame(animate);
+                if (!active) return;
+                frame = requestAnimationFrame(animate);
                 particles.rotation.y += 0.0005;
                 renderer.render(scene, camera);
             }
 
             animate();
 
-            window.addEventListener('resize', () => {
+            const resize = () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
+                renderer.setSize(window.innerWidth, window.innerHeight, false);
+            };
+            const visibility = () => {
+                active = document.visibilityState === 'visible';
+                if (active && !frame) animate();
+            };
+            const contextLost = (event) => { event.preventDefault(); active = false; cancelAnimationFrame(frame); frame = 0; };
+            const contextRestored = () => { active = document.visibilityState === 'visible'; if (active) animate(); };
+            window.addEventListener('resize', resize, { passive: true });
+            document.addEventListener('visibilitychange', visibility, { passive: true });
+            renderer.domElement.addEventListener('webglcontextlost', contextLost, { passive: false });
+            renderer.domElement.addEventListener('webglcontextrestored', contextRestored, { passive: true });
+            const cleanup = () => {
+                cancelAnimationFrame(frame);
+                window.removeEventListener('resize', resize);
+                document.removeEventListener('visibilitychange', visibility);
+                renderer.domElement.removeEventListener('webglcontextlost', contextLost);
+                renderer.domElement.removeEventListener('webglcontextrestored', contextRestored);
+                geometry.dispose();
+                material.dispose();
+                renderer.dispose();
+            };
+            window.addEventListener('pagehide', cleanup, { once: true });
+            return cleanup;
         }
     </script>
 </body>

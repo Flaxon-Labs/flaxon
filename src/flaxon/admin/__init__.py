@@ -6,7 +6,8 @@ from .decorators import admin_action, admin_display, admin_model
 from .exceptions import AdminError, ModelNotFoundError, PermissionDeniedError
 from .registry import Registry
 from .views import AdminView, ChangeListView, CreateView, DeleteView, DetailView, UpdateView
-from .services import AdminActivity, AdminAuth, AdminRateLimit, AdminStore, RedisAdminSessionBackend
+from .services import AdminActivity, AdminAuth, AdminRateLimit, AdminStore, AdminStoreSessionBackend, RedisAdminSessionBackend
+from .production import DurableJob, DurableJobStore, DurableJobWorker, ImmutableAuditLog, NotificationService, ResumableUploadStore, WebAuthnService
 from .migrations import ADMIN_SCHEMA_DOWN, ADMIN_SCHEMA_UP, write_admin_migration
 
 __all__ = [
@@ -29,7 +30,15 @@ __all__ = [
     "AdminAuth",
     "AdminRateLimit",
     "AdminStore",
+    "AdminStoreSessionBackend",
     "RedisAdminSessionBackend",
+    "DurableJob",
+    "DurableJobStore",
+    "DurableJobWorker",
+    "ImmutableAuditLog",
+    "NotificationService",
+    "ResumableUploadStore",
+    "WebAuthnService",
     "ADMIN_SCHEMA_UP",
     "ADMIN_SCHEMA_DOWN",
     "write_admin_migration",

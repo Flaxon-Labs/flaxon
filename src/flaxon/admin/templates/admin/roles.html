@@ -11,7 +11,7 @@
     <button class="bg-blue-600 rounded px-3 py-2">Save role</button>
   </form>
   <table class="w-full text-left"><thead><tr class="border-b border-slate-700"><th class="p-3">Role</th><th class="p-3">Permissions</th></tr></thead><tbody>
-  {% for name, permissions in roles.items() %}<tr class="border-b border-slate-800"><td class="p-3">{{ name }}</td><td class="p-3">{{ permissions|join(', ') }}</td></tr>{% endfor %}
+  {% for name, permissions in roles.items() %}<tr class="border-b border-slate-800"><td class="p-3">{{ name }}</td><td class="p-3">{{ permissions|join(', ') }}</td><td class="p-3">{% if name not in ['staff', 'administrator'] %}<form method="post"><input type="hidden" name="_csrf" value="{{ dashboard.csrf_token() }}"><input type="hidden" name="name" value="{{ name }}"><input type="hidden" name="action" value="delete"><button class="text-red-400" type="submit">Delete</button></form>{% endif %}</td></tr>{% endfor %}
   </tbody></table>
 </div>
 {% endblock %}

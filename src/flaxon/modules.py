@@ -48,10 +48,8 @@ Design notes (why this isn't just a thin copy of Flask blueprints):
 - Nested modules and CLI commands build on top of the same mount-time
   merge, not new mechanisms.
 
-Known gap in this cut: `Router.include_router()` re-prefixes HTTP routes
-correctly but does NOT re-prefix WebSocket routes (verified against the
-current source) -- this module handles that re-prefixing itself below,
-since the router doesn't.
+WebSocket routes are mounted explicitly below so module endpoint wrapping and
+mount-time composition remain symmetrical with HTTP routes.
 """
 
 from __future__ import annotations
@@ -329,8 +327,8 @@ def _merge_module(app: Any, module: FlaxonModule, prefix: str, mount_name: str, 
 
     app.router.include_router(wrapped_router, prefix=prefix)
 
-    # WebSocket routes: include_router doesn't re-prefix these (verified
-    # gap in the current router), so handle it here.
+    # WebSocket routes use the same mount-time prefix as HTTP routes while
+    # preserving the module endpoint identity.
     mount = prefix.rstrip("/")
     for source in module.router.websocket_routes:
         path = source.path

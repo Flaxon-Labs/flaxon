@@ -25,7 +25,7 @@
     </div>
 
     <!-- Edit Form -->
-    <form method="POST" class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden"><input type="hidden" name="_csrf" value="{{ dashboard.csrf_token() }}">
+    <form method="POST" class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden"><input type="hidden" name="_csrf" value="{{ dashboard.csrf_token() }}"><input type="hidden" name="_version" value="{{ version }}">
         <div class="p-4 sm:p-6 space-y-4">
             {% for field in fields or ['name', 'description', 'status'] %}
             {% set is_readonly = (readonly_fields is defined and field in readonly_fields) or field == 'id' %}

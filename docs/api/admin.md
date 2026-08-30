@@ -162,6 +162,45 @@
 ## ValidationError
 
 ::: flaxon.admin.exceptions.ValidationError
+
+## Production Services
+
+These services are available for durable Admin integrations:
+
+```python
+from flaxon.admin import (
+    DurableJobStore, DurableJobWorker, ImmutableAuditLog,
+    NotificationService, ResumableUploadStore, WebAuthnService,
+)
+```
+
+| Service | Purpose |
+|---|---|
+| `DurableJobStore` | Persist queued, running, completed, and failed jobs with retry metadata. |
+| `DurableJobWorker` | Register named handlers and process due jobs. |
+| `ImmutableAuditLog` | Append hash-chained records and verify tamper evidence. |
+| `NotificationService` | Store preferences and per-user channel delivery records. |
+| `ResumableUploadStore` | Persist upload sessions, chunks, and final SHA-256 validation. |
+| `WebAuthnService` | Delegate registration and assertion ceremonies to an injected provider. |
+
+## HTTP Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/admin/media/resumable` | Create a resumable upload session. |
+| `PATCH` | `/admin/media/resumable/{upload_id}` | Upload a raw byte chunk using `Upload-Offset`. |
+| `POST` | `/admin/media/resumable/{upload_id}/complete` | Validate and persist the completed upload. |
+| `GET` | `/admin/notifications/preferences` | Read the current user’s notification preferences. |
+| `POST` | `/admin/notifications/preferences` | Update preferences with a CSRF header. |
+| `GET` | `/admin/audit/verify` | Verify the persisted audit hash chain. |
+| `POST` | `/admin/profile/webauthn/register/begin` | Start provider-backed credential registration. |
+| `POST` | `/admin/profile/webauthn/register/finish` | Complete credential registration. |
+| `POST` | `/admin/profile/webauthn/authenticate/begin` | Start provider-backed authentication. |
+| `POST` | `/admin/profile/webauthn/authenticate/finish` | Verify an authentication assertion. |
+
+All authenticated Admin mutations require the session cookie and
+`X-CSRF-Token`. Use `redis_url` for shared sessions, rate limits, and
+multi-worker coordination.
 # Admin API Reference
 
 For the current production contract, including authentication, CSRF,

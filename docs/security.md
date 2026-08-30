@@ -154,6 +154,22 @@ Use cases include:
 
 # Security Recommendations
 
+## Admin and CMS Hardening
+
+For Admin deployments, configure a shared Redis backend for sessions and
+distributed request limits, keep CSRF enabled, and use `session_idle_timeout`
+with HTTPS-only deployment. Password-reset and MFA operations are separately
+limited by account and IP when Redis is configured.
+
+Media uploads can use a scanner callback, SHA-256 metadata, EXIF removal, and
+S3 presigned URLs. A scanner callback is only production antivirus protection
+when connected to an actual engine such as ClamAV; returning `True` from a test
+callback does not scan files.
+
+Audit records are hash chained and can be checked with
+`GET /admin/audit/verify`. Keep audit storage append-only at the database and
+infrastructure layers, and define a retention policy before deployment.
+
 ## Production Checklist
 
 Before deploying a Flaxon application:

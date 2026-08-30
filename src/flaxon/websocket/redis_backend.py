@@ -9,8 +9,10 @@ from .broadcaster import Broadcaster
 
 
 class RedisBroadcaster(Broadcaster):
-    def __init__(self, redis_url: str = "redis://localhost:6379/0") -> None:
+    def __init__(self, redis_url: str = "redis://localhost:6379/0", *, protocol: int = 2, max_connections: int = 100) -> None:
         self.redis_url = redis_url
+        self.protocol = protocol
+        self.max_connections = max_connections
         self._pub = None
         self._sub = None
         self._lock = asyncio.Lock()
@@ -18,13 +20,13 @@ class RedisBroadcaster(Broadcaster):
     async def _get_pub(self):
         if self._pub is None:
             import redis.asyncio as redis
-            self._pub = redis.from_url(self.redis_url, decode_responses=True)
+            self._pub = redis.from_url(self.redis_url, decode_responses=True, protocol=self.protocol, max_connections=self.max_connections)
         return self._pub
 
     async def _get_sub(self):
         if self._sub is None:
             import redis.asyncio as redis
-            self._sub = redis.from_url(self.redis_url, decode_responses=True)
+            self._sub = redis.from_url(self.redis_url, decode_responses=True, protocol=self.protocol, max_connections=self.max_connections)
         return self._sub
 
     async def publish(self, channel: str, message: Any) -> None:

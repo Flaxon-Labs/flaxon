@@ -87,6 +87,7 @@ dev = [
 
 security = [
     "cryptography>=42.0.0",
+    "qrcode[pil]>=7.4.0",
 ]
 
 docs = [

@@ -116,14 +116,31 @@ class S3StorageAdapter:
             region_name=self.region,
             endpoint_url=self.endpoint_url,
         ) as s3:
-            response = await s3.list_objects_v2(Bucket=self.bucket, Prefix=prefix)
-
-            if "Contents" not in response:
-                return []
-
-            return [obj["Key"] for obj in response["Contents"]]
+            keys: list[str] = []
+            request: dict[str, str] = {"Bucket": self.bucket, "Prefix": prefix}
+            while True:
+                response = await s3.list_objects_v2(**request)
+                keys.extend(obj["Key"] for obj in response.get("Contents", []))
+                if not response.get("IsTruncated"):
+                    return keys
+                token = response.get("NextContinuationToken")
+                if not token:
+                    return keys
+                request["ContinuationToken"] = token
 
     def get_url(self, path: str) -> str:
         if self.public_url:
             return f"{self.public_url}/{path}"
         return f"https://{self.bucket}.s3.{self.region}.amazonaws.com/{path}"
+
+    async def get_signed_url(self, path: str, expires_in: int = 900) -> str:
+        """Return a short-lived presigned URL for private object storage."""
+        session = await self._get_client()
+        async with session.client(
+            "s3",
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+            region_name=self.region,
+            endpoint_url=self.endpoint_url,
+        ) as s3:
+            return await s3.generate_presigned_url("get_object", Params={"Bucket": self.bucket, "Key": path}, ExpiresIn=max(1, expires_in))

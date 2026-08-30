@@ -119,3 +119,19 @@ class FileStorage:
             "path": str(path),
             "extension": path.suffix,
         }
+
+    def create_thumbnail(self, file_path: str, size: tuple[int, int] = (320, 240)) -> str | None:
+        """Create a bounded JPEG thumbnail beside a stored image when Pillow is available."""
+        try:
+            from PIL import Image
+            source = self._safe_path(Path(file_path).relative_to(self.base_path).as_posix()) if Path(file_path).is_absolute() else self._safe_path(file_path)
+            thumbnail_path = self._safe_path("thumbnails", f"{source.stem}.jpg")
+            thumbnail_path.parent.mkdir(parents=True, exist_ok=True)
+            with Image.open(source) as image:
+                image.thumbnail(size)
+                if image.mode not in {"RGB", "L"}:
+                    image = image.convert("RGB")
+                image.save(thumbnail_path, format="JPEG", optimize=True)
+            return str(thumbnail_path)
+        except (ImportError, OSError, ValueError):
+            return None

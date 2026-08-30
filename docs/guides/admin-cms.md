@@ -118,10 +118,11 @@ Browser forms include a hidden `_csrf` field. SPA mutations include the same
 token in the `X-CSRF-Token` header. Custom clients must preserve this rule.
 
 The backend exposes revision comparison data, menu hierarchy data, media
-metadata operations, scheduled status fields, and notification activity. The
-bundled SPA currently provides reference controls for these APIs; it is not a
-replacement for a complete editorial calendar, visual diff workspace, nested
-menu tree editor, thumbnail pipeline, or inbox notification product.
+metadata operations, scheduled status fields, durable thumbnail jobs, resumable
+uploads, audit verification, and notification preferences. The bundled SPA is
+the reference client for the core workflows; applications needing a full
+editorial calendar, visual diff workspace, nested menu tree editor, or external
+notification delivery should build those views and adapters on these APIs.
 
 ## Model Admin
 
@@ -321,3 +322,38 @@ and WebSocket broadcasting.
 
 The complete runnable reference is
 `docs/examples/cms/full_admin_cms/app.py`.
+
+## Production Addendum
+
+The following configuration enables the hardened Admin/CMS path without
+changing the existing registration code:
+
+```python
+admin = AdminDashboard(
+    app,
+    storage_path="var/admin.sqlite3",
+    redis_url="redis://localhost:6379/0",
+    redis_protocol=2,
+    redis_max_connections=100,
+    session_idle_timeout=1800,
+    media_scanner=clamav_scan,
+)
+cms = CMS(app, auth=admin.auth, redis_url="redis://localhost:6379/0")
+```
+
+Use Redis for every web and worker process. It coordinates sessions, Admin
+rate limits, CMS publishing locks, and WebSocket events. Use
+`flaxon migrate` for the application-owned schema before the first deploy.
+
+The Admin exposes durable resumable media upload endpoints, Admin model
+CSV/JSON import/export endpoints, notification preferences, audit-chain
+verification, and provider-backed WebAuthn endpoints. See the [Admin API
+Reference](../api/admin.md) for paths and CSRF requirements.
+
+The bundled Three.js background is optional decoration. It is disabled for
+reduced-motion/data-saving clients and safely skipped when the CDN or WebGL is
+unavailable; it must never be used as an application-health signal.
+
+Do not claim that WebAuthn or antivirus scanning is enabled merely because the
+Flaxon adapters are present. Inject a maintained WebAuthn provider and a real
+scanner service, then test their ceremonies and failure behavior in staging.

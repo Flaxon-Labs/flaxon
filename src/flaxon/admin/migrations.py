@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS flaxon_admin_users (id VARCHAR(64) PRIMARY KEY, usern
 CREATE TABLE IF NOT EXISTS flaxon_admin_settings (key VARCHAR(150) PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS flaxon_admin_activity (id VARCHAR(64) PRIMARY KEY, action VARCHAR(100) NOT NULL, resource VARCHAR(150) NOT NULL, record_id VARCHAR(150), username VARCHAR(150), details TEXT NOT NULL DEFAULT '{}', created_at TIMESTAMP NOT NULL);
 CREATE TABLE IF NOT EXISTS flaxon_admin_store (namespace VARCHAR(255) NOT NULL, key VARCHAR(255) NOT NULL, value TEXT NOT NULL, PRIMARY KEY(namespace, key));
+CREATE TABLE IF NOT EXISTS flaxon_admin_operations (id VARCHAR(64) PRIMARY KEY, kind VARCHAR(80) NOT NULL, payload TEXT NOT NULL, created_at TIMESTAMP NOT NULL);
 CREATE TABLE IF NOT EXISTS flaxon_cms_taxonomies (id VARCHAR(64) PRIMARY KEY, name VARCHAR(150) NOT NULL, slug VARCHAR(180) NOT NULL UNIQUE, description TEXT);
 CREATE TABLE IF NOT EXISTS flaxon_cms_terms (id VARCHAR(64) PRIMARY KEY, taxonomy_id VARCHAR(64) NOT NULL, name VARCHAR(150) NOT NULL, slug VARCHAR(180) NOT NULL, parent_id VARCHAR(64));
 CREATE TABLE IF NOT EXISTS flaxon_cms_comments (id VARCHAR(64) PRIMARY KEY, content_type VARCHAR(150) NOT NULL, record_id VARCHAR(150) NOT NULL, author_name VARCHAR(150), author_email VARCHAR(320), body TEXT NOT NULL, status VARCHAR(30) NOT NULL DEFAULT 'pending', created_at TIMESTAMP NOT NULL);
@@ -17,7 +18,7 @@ CREATE TABLE IF NOT EXISTS flaxon_cms_menus (name VARCHAR(150) PRIMARY KEY, item
 """
 
 ADMIN_SCHEMA_DOWN = """
-DROP TABLE IF EXISTS flaxon_cms_menus; DROP TABLE IF EXISTS flaxon_cms_comments; DROP TABLE IF EXISTS flaxon_cms_terms; DROP TABLE IF EXISTS flaxon_cms_taxonomies; DROP TABLE IF EXISTS flaxon_admin_store; DROP TABLE IF EXISTS flaxon_admin_activity; DROP TABLE IF EXISTS flaxon_admin_settings; DROP TABLE IF EXISTS flaxon_admin_users;
+DROP TABLE IF EXISTS flaxon_cms_menus; DROP TABLE IF EXISTS flaxon_cms_comments; DROP TABLE IF EXISTS flaxon_cms_terms; DROP TABLE IF EXISTS flaxon_cms_taxonomies; DROP TABLE IF EXISTS flaxon_admin_operations; DROP TABLE IF EXISTS flaxon_admin_store; DROP TABLE IF EXISTS flaxon_admin_activity; DROP TABLE IF EXISTS flaxon_admin_settings; DROP TABLE IF EXISTS flaxon_admin_users;
 """
 
 

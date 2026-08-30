@@ -9,6 +9,7 @@
         view: "dashboard",
         currentType: null,
         error: null,
+        loading: false,
         darkMode: localStorage.getItem("admin-dark-mode") !== "false",
 
         listItems: [],
@@ -63,20 +64,26 @@
         },
 
         async api(path, options = {}) {
+          this.loading = true;
           try {
-            const res = await fetch(API_BASE + path, {
+            const request = () => fetch(API_BASE + path, {
               ...options,
               headers: { "Content-Type": "application/json", ...(CSRF_TOKEN ? { "X-CSRF-Token": CSRF_TOKEN } : {}), ...(options.headers || {}) },
             });
+            let res = await request();
+            if (res.status >= 500) { await new Promise(resolve => setTimeout(resolve, 250)); res = await request(); }
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-              this.error = data.message || data.error || `Request failed (${res.status})`;
+              const detail = data.error?.message || data.error?.detail || data.message || data.error;
+              this.error = detail || `Request failed (${res.status})`;
               return null;
             }
             return data;
           } catch (e) {
             this.error = "Network error: " + e.message;
             return null;
+          } finally {
+            this.loading = false;
           }
         },
 
@@ -166,6 +173,10 @@
           return this.types.find((t) => t.name === name) || null;
         },
 
+        can(action, type = this.currentType) {
+          return Boolean(type?.capabilities?.[action]);
+        },
+
         async openList(typeName, pushHash = true) {
           this.currentType = this.findType(typeName);
           if (!this.currentType) return;
@@ -205,7 +216,7 @@
         },
 
         async runBulkAction() {
-          if (!this.bulkAction || !this.selected.length) return;
+          if (!this.can("update") || !this.bulkAction || !this.selected.length) return;
           const ok = await this.api(`/${this.currentType.name}/actions/${this.bulkAction}`, {
             method: "POST",
             body: JSON.stringify({ ids: this.selected }),
@@ -219,6 +230,7 @@
         },
 
         async deleteItem(id) {
+          if (!this.can("delete")) return;
           if (!confirm("Delete this item?")) return;
           const ok = await this.api(`/${this.currentType.name}/items/${id}`, { method: "DELETE" });
           if (ok) {
@@ -229,7 +241,7 @@
 
         openCreate(typeName, pushHash = true) {
           this.currentType = this.findType(typeName);
-          if (!this.currentType) return;
+          if (!this.currentType || !this.can("create", this.currentType)) return;
           this.editingId = null;
           this.formData = { status: "draft", slug: "" };
           this.currentType.fields.forEach((f) => {
@@ -244,7 +256,7 @@
 
         async openEdit(typeName, itemId, pushHash = true) {
           this.currentType = this.findType(typeName);
-          if (!this.currentType) return;
+          if (!this.currentType || !this.can("update", this.currentType)) return;
           const item = await this.api(`/${typeName}/items/${itemId}`);
           if (!item) return;
           this.editingId = itemId;
@@ -259,6 +271,7 @@
         },
 
         async saveItem() {
+          if (!this.can(this.editingId ? "update" : "create")) return;
           const typeName = this.currentType.name;
           const payload = { ...this.formData };
           delete payload._history;

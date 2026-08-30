@@ -214,3 +214,83 @@ Test login, permissions, create/edit/delete, revision restore, media upload,
 moderation, scheduled publishing, import/export, and menu persistence through
 both API tests and browser automation. The complete runnable example is
 `docs/examples/cms/full_admin_cms/app.py`.
+# Admin Production Hardening Cheatsheet
+
+## Shared deployment
+
+```python
+from flaxon.admin import AdminDashboard
+
+admin = AdminDashboard(
+    app,
+    storage_path="var/admin.sqlite3",
+    redis_url="redis://127.0.0.1:6379/0",
+    redis_protocol=2,
+    redis_max_connections=100,
+    session_idle_timeout=1800,
+)
+```
+
+Use the same Redis URL and persistent database for every worker. Never use the
+default in-memory session backend in production.
+
+## Durable jobs
+
+```python
+from flaxon.admin import DurableJobStore, DurableJobWorker
+
+jobs = DurableJobStore(admin.store)
+worker = DurableJobWorker(jobs)
+worker.register("reports.generate", generate_report)
+jobs.enqueue("reports.generate", {"id": "42"}, max_attempts=5)
+await worker.run_once()
+```
+
+## Resumable upload protocol
+
+```text
+POST  /admin/media/resumable
+PATCH /admin/media/resumable/{upload_id}       Upload-Offset: 0
+POST  /admin/media/resumable/{upload_id}/complete
+```
+
+Send `filename`, `total_size`, and optional `sha256` when creating the
+session. Send raw bytes for each chunk and include `X-CSRF-Token`.
+
+## Audit and notifications
+
+```python
+from flaxon.admin import ImmutableAuditLog, NotificationService
+
+audit = ImmutableAuditLog(admin.store)
+assert audit.verify()
+audit.prune(before_timestamp)
+
+notifications = NotificationService(admin.store)
+notifications.set_preferences("editor", {"email": True, "webhook": False})
+notifications.publish("editor", "email", {"subject": "Review needed"}, send_email)
+```
+
+Verify audit integrity after restore operations and retain the database using
+your organization’s retention policy.
+
+## WebAuthn
+
+```python
+from flaxon.admin import WebAuthnService
+
+admin.webauthn = WebAuthnService(admin.store, provider=my_webauthn_provider)
+```
+
+The provider must implement registration and assertion verification using a
+maintained WebAuthn library. Do not implement assertion verification in the
+browser or trust client-provided credential IDs without provider validation.
+
+## API and UI rules
+
+- Include `_csrf` in browser forms and `X-CSRF-Token` in SPA mutations.
+- Enforce `<model>:create`, `<model>:read`, `<model>:update`, and
+  `<model>:delete` permissions server-side.
+- Treat Three.js as optional decoration; authentication and notifications must
+  work if its CDN request or WebGL initialization fails.
+- Run `flaxon migrate` before starting workers and web processes.
