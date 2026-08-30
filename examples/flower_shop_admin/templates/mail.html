@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title><link rel="stylesheet" href="/shop-static/shop.css">
+</head>
+<body>
+  <main class="shell">
+    <a class="back" href="/">&larr; Petal &amp; Stem</a>
+    <p class="eyebrow">DEVELOPMENT TOOL</p>
+    <h1>Mail inbox.</h1>
+    <p class="lede">Reset and verification messages are captured here instead of sent to a real provider.</p>
+    <section class="messages" aria-label="Captured email messages">
+      {% for message in messages %}
+      <article class="message"><b>{{ message.get('subject', 'Message') }}</b><p>To: {{ message.get('to', '') }}</p><a class="back" href="{{ message.get('url', '#') }}">Open action link</a></article>
+      {% else %}<p class="status">No messages captured yet. Use Forgot your password or send verification from Admin Profile.</p>{% endfor %}
+    </section>
+  </main>
+</body>
+</html>

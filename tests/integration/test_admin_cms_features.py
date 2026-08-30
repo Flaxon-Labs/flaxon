@@ -50,6 +50,22 @@ def test_cms_workflows_and_sanitization():
     assert restored.json()["title"] == "Hello"
 
 
+def test_cms_body_parser_accepts_plain_dict_form_data():
+    app = Flaxon("cms-form-data")
+    cms = CMS(app, auth=None)
+    cms.register(ContentType("page", fields=[CMSField("title", required=True)]))
+
+    class PlainFormRequest:
+        headers = {"content-type": "multipart/form-data; boundary=test"}
+
+        async def form(self):
+            return {"title": "Form page"}
+
+    parsed = asyncio.run(cms._body_data(PlainFormRequest()))
+    assert parsed == {"title": "Form page"}
+    assert cms.content_types["page"].create(parsed)["title"] == "Form page"
+
+
 def test_cms_scheduled_content_publishes_when_due():
     _, _, client, headers = _app()
     created = client.post("/admin/cms/api/post/items", json_data={"title": "Scheduled", "status": "scheduled", "publish_at": "2000-01-01T00:00:00+00:00"}, headers=headers)

@@ -84,7 +84,10 @@ interface uses `/admin/<model-name>`.
 
 ## Persistence and Migrations
 
-`storage_path` enables the built-in AdminStore. It persists Admin users,
+`storage_path` enables the built-in SQLite AdminStore. For PostgreSQL or Neon,
+use `PostgreSQLAdminStore(database_url)` and pass it as `store`; it persists
+the same auxiliary Admin state without a local filesystem dependency. Both
+stores persist Admin users,
 roles, settings, sessions, reset/verification tokens, activities, media
 metadata, notifications, operations, jobs, audit entries, uploads, and CMS
 namespaces. Create the parent directory before startup.

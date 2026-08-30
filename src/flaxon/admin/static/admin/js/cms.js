@@ -69,11 +69,15 @@
         },
 
         async api(path, options = {}) {
-          this.loading = true;
+            this.loading = true;
           try {
             const request = () => fetch(API_BASE + path, {
               ...options,
-              headers: { "Content-Type": "application/json", ...(csrfToken() ? { "X-CSRF-Token": csrfToken() } : {}), ...(options.headers || {}) },
+              headers: {
+                ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+                ...(csrfToken() ? { "X-CSRF-Token": csrfToken() } : {}),
+                ...(options.headers || {}),
+              },
             });
             let res = await request();
             if (res.status >= 500) { await new Promise(resolve => setTimeout(resolve, 250)); res = await request(); }
@@ -250,7 +254,9 @@
           this.editingId = null;
           this.formData = { status: "draft", slug: "" };
           this.currentType.fields.forEach((f) => {
-            this.formData[f.name] = f.type === "boolean" ? false : (['json'].includes(f.type) ? "{}" : (['repeater','relationship'].includes(f.type) ? "[]" : ""));
+            this.formData[f.name] = f.default !== undefined && f.default !== null
+              ? f.default
+              : (f.type === "boolean" ? false : (f.type === "select" ? ((f.choices || [])[0] || "draft") : (['json'].includes(f.type) ? "{}" : (['repeater','relationship'].includes(f.type) ? "[]" : ""))));
           });
           this.view = "form";
           this.dirty = false;
@@ -282,13 +288,13 @@
           delete payload._history;
           const hasUpload = this.currentType.fields.some((field) => ["file", "image"].includes(field.type));
           let body = JSON.stringify(payload);
-          let headers = { "Content-Type": "application/json", "X-CSRF-Token": CSRF_TOKEN };
+          let headers = { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() };
           if (hasUpload) {
             const multipart = new FormData();
             Object.entries(payload).forEach(([key, value]) => multipart.append(key, value ?? ""));
             this.$root.querySelectorAll('input[type="file"]').forEach((input) => { if (input.files[0]) multipart.set(input.name, input.files[0]); });
             body = multipart;
-            headers = { "X-CSRF-Token": CSRF_TOKEN };
+            headers = { "X-CSRF-Token": csrfToken() };
           }
           if (this.editingId) {
             const ok = await this.api(`/${typeName}/items/${this.editingId}`, {
@@ -296,14 +302,14 @@
               body,
               headers,
             });
-            if (ok) { this.clearDraft(typeName, this.editingId); this.dirty = false; this.openList(typeName); }
+            if (ok) { this.clearDraft(typeName, this.editingId); this.dirty = false; await this.openList(typeName); }
           } else {
             const ok = await this.api(`/${typeName}/items`, {
               method: "POST",
               body,
               headers,
             });
-            if (ok) { this.clearDraft(typeName); this.dirty = false; this.openList(typeName); }
+            if (ok) { this.clearDraft(typeName); this.dirty = false; await this.openList(typeName); }
           }
           await this.loadConfig();
         },
@@ -333,14 +339,38 @@
         async importFile(event) {
           const file = event.target.files[0];
           if (!file || !this.currentType) return;
-          const text = await file.text();
-          let records;
-          if (file.name.toLowerCase().endsWith('.csv')) {
-            const [header, ...rows] = text.trim().split(/\r?\n/).map((line) => line.split(','));
-            records = rows.map((row) => Object.fromEntries(header.map((key, index) => [key, row[index] || ''])));
-          } else records = JSON.parse(text);
-          const result = await this.api(`/import/${this.currentType.name}`, { method: "POST", body: JSON.stringify(records) });
-          if (result) await this.fetchList();
+          try {
+            const text = await file.text();
+            let records;
+            if (file.name.toLowerCase().endsWith('.csv')) {
+              const rows = [];
+              let row = [], cell = "", quoted = false;
+              for (let index = 0; index < text.length; index++) {
+                const char = text[index];
+                const next = text[index + 1];
+                if (char === '"' && quoted && next === '"') { cell += '"'; index++; }
+                else if (char === '"') quoted = !quoted;
+                else if (char === ',' && !quoted) { row.push(cell); cell = ""; }
+                else if ((char === '\n' || char === '\r') && !quoted) {
+                  if (char === '\r' && next === '\n') index++;
+                  row.push(cell); rows.push(row); row = []; cell = "";
+                } else cell += char;
+              }
+              if (cell || row.length) { row.push(cell); rows.push(row); }
+              const [header, ...dataRows] = rows.filter((values) => values.some((value) => value !== ""));
+              if (!header || !header.length) throw new Error("CSV file has no header row.");
+              records = dataRows.map((values) => Object.fromEntries(header.map((key, index) => [key, values[index] || ""])));
+            } else {
+              records = JSON.parse(text);
+            }
+            if (!Array.isArray(records)) throw new Error("Import document must contain a list of records.");
+            const result = await this.api(`/import/${this.currentType.name}`, { method: "POST", body: JSON.stringify(records) });
+            if (result) await this.fetchList();
+          } catch (error) {
+            this.error = `Import failed: ${error.message}`;
+          } finally {
+            event.target.value = "";
+          }
         },
       };
     }

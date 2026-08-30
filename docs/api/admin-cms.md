@@ -7,7 +7,7 @@ guidance, read [Admin and CMS Production Guide](../guides/admin-cms.md).
 
 ```python
 from flaxon.admin import (
-    AdminConfig, AdminDashboard, AdminAuth, AdminStore,
+    AdminConfig, AdminDashboard, AdminAuth, AdminStore, PostgreSQLAdminStore,
     RedisAdminSessionBackend, write_admin_migration,
 )
 from flaxon.admin.cms import CMS, CMSField, ContentType
@@ -37,9 +37,19 @@ AdminDashboard(
 )
 ```
 
-Use exactly one durable persistence strategy: `storage_path` for the built-in
-SQLite store, or `database` for the application-owned database. `redis_url`
-adds shared event broadcasting when the application has a WebSocket manager.
+Use exactly one AdminStore strategy for the auxiliary production services:
+`storage_path` for the built-in SQLite store, or `PostgreSQLAdminStore` for a
+PostgreSQL/Neon deployment. The separate `database` argument persists the
+dashboard and CMS application data. `redis_url` adds shared sessions, rate
+limits, publishing locks, and event broadcasting when configured.
+
+```python
+from flaxon.admin import PostgreSQLAdminStore
+
+store = PostgreSQLAdminStore(settings.database_url)
+admin = AdminDashboard(app, database=database, store=store, redis_url=settings.redis_url)
+app.on_shutdown(store.close)
+```
 
 Extension methods:
 

@@ -80,7 +80,9 @@ class PasswordValidator:
         if self.require_digits and not any(c.isdigit() for c in password):
             errors.append("Password must contain at least one digit.")
 
-        if self.require_special and not any(c in string.punctuation for c in password):
+        # Treat any non-alphanumeric, non-whitespace symbol as special so
+        # passwords generated with Unicode symbols are accepted consistently.
+        if self.require_special and not any(not c.isalnum() and not c.isspace() for c in password):
             errors.append("Password must contain at least one special character.")
 
         common_passwords = {"password", "12345678", "qwerty", "letmein", "admin", "welcome"}

@@ -107,3 +107,21 @@ def test_media_thumbnail_contains_dimensions(tmp_path):
     assert thumbnail is not None
     with Image.open(thumbnail) as image:
         assert image.width <= 320 and image.height <= 240
+
+
+def test_media_listing_falls_back_when_thumbnail_metadata_is_stale(tmp_path):
+    from flaxon.files import FileStorage
+
+    app = Flaxon("media-stale-thumbnail")
+    dashboard = AdminDashboard(app, upload_dir=str(tmp_path / "uploads"))
+    storage = FileStorage(str(tmp_path / "uploads"))
+    storage.save_bytes(b"image data", "flower.jpg")
+    dashboard.media_metadata["flower.jpg"] = {
+        "thumbnail_url": "/uploads\\thumbnails\\missing.jpg",
+        "content_type": "image/jpeg",
+    }
+
+    files = asyncio.run(dashboard._media_files())
+
+    assert files[0]["url"] == "/uploads/flower.jpg"
+    assert "thumbnail_url" not in files[0]["metadata"]

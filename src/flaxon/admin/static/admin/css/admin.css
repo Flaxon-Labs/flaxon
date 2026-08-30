@@ -42,6 +42,71 @@ body {
     .bottom-nav {
         display: flex;
     }
+
+    .admin-page-content {
+        min-width: 0;
+        width: 100%;
+        padding: 0.75rem 0.75rem 5.5rem !important;
+        overflow-x: hidden;
+    }
+
+    .admin-page-content .grid-cols-2,
+    .admin-page-content .grid-cols-3,
+    .admin-page-content .grid-cols-4 {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .admin-page-content .flex-row {
+        flex-wrap: wrap;
+    }
+
+    .admin-brand-name {
+        display: none !important;
+    }
+
+    .mobile-menu-overlay {
+        background: rgba(2, 6, 23, 0.68);
+    }
+
+    .mobile-menu-drawer {
+        animation: admin-menu-in 160ms ease-out;
+    }
+
+    .mobile-menu-drawer nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .mobile-menu-drawer .mobile-menu-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 2.75rem;
+        padding: 0.7rem 0.8rem;
+        border-radius: 0.5rem;
+        color: #cbd5e1;
+        text-decoration: none;
+        white-space: normal;
+    }
+
+    .mobile-menu-drawer .mobile-menu-link:hover,
+    .mobile-menu-drawer .mobile-menu-link:focus-visible {
+        background: rgba(51, 65, 85, 0.65);
+        color: #fff;
+    }
+
+    .mobile-menu-drawer .mobile-menu-link i {
+        width: 1.25rem;
+        flex: 0 0 1.25rem;
+        text-align: center;
+        color: #60a5fa;
+    }
+}
+
+@keyframes admin-menu-in {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
 }
 
 /* ----- Dark Mode Overrides ----- */

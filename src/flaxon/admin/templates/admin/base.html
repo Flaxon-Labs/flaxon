@@ -19,7 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Admin CSS -->
-    <link rel="stylesheet" href="/static/admin/css/admin.css?v=20260827-2">
+    <link rel="stylesheet" href="/static/admin/css/admin.css?v=20260830-1">
 
     {% block extra_head %}{% endblock %}
 </head>
@@ -36,7 +36,7 @@
                         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">
                             F
                         </div>
-                        <span class="text-lg font-bold text-white hidden sm:block">
+                        <span class="admin-brand-name text-lg font-bold text-white hidden sm:block">
                             {{ dashboard.config.site_title if dashboard else (config.site_title if config else "Flaxon Admin") }}
                         </span>
                     </div>
@@ -51,6 +51,9 @@
 
                     <!-- Right Actions -->
                     <div class="flex items-center gap-2 sm:gap-3">
+                        <button @click="mobileMenuOpen = true" title="Open navigation" aria-label="Open navigation" class="mobile-menu-button p-2 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white md:hidden">
+                            <i class="fas fa-bars"></i>
+                        </button>
                         <button @click="toggleNotifications()" title="Notifications" aria-label="Notifications" class="p-2 rounded-lg hover:bg-slate-700/50 transition text-slate-400 hover:text-white relative">
                             <i class="fas fa-bell"></i>
                             <span x-show="notifications.length" x-text="notifications.length > 9 ? '9+' : notifications.length" class="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-red-500 rounded-full text-[10px] leading-4 text-white"></span>
@@ -69,6 +72,28 @@
                 </div>
             </div>
         </nav>
+
+        <!-- Mobile navigation drawer -->
+        <div x-show="mobileMenuOpen" x-cloak class="mobile-menu-overlay fixed inset-0 z-[60] md:hidden" @click.self="mobileMenuOpen = false">
+            <aside class="mobile-menu-drawer absolute right-0 top-0 h-full w-[min(21rem,88vw)] overflow-y-auto bg-slate-800 border-l border-slate-700 shadow-2xl" @click.outside="mobileMenuOpen = false">
+                <div class="flex items-center justify-between border-b border-slate-700 px-5 py-4"><strong>Admin navigation</strong><button @click="mobileMenuOpen = false" title="Close navigation" aria-label="Close navigation" class="p-2 text-slate-400 hover:text-white"><i class="fas fa-xmark"></i></button></div>
+                <nav class="space-y-1 p-4" aria-label="Mobile Admin navigation">
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/" class="mobile-menu-link"><i class="fas fa-th-large"></i>Dashboard</a>
+                    {% set mobile_models = models if models else (dashboard.registry.get_all() if dashboard else []) %}
+                    {% for model_item in mobile_models %}<a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/{{ model_item.get_name() }}" class="mobile-menu-link"><i class="fas fa-table"></i>{{ model_item.get_verbose_name_plural() }}</a>{% endfor %}
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/users" class="mobile-menu-link"><i class="fas fa-users"></i>Users</a>
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/roles" class="mobile-menu-link"><i class="fas fa-shield-halved"></i>Roles &amp; permissions</a>
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/media" class="mobile-menu-link"><i class="fas fa-photo-film"></i>Media</a>
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/settings" class="mobile-menu-link"><i class="fas fa-gear"></i>Settings</a>
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/activity" class="mobile-menu-link"><i class="fas fa-clock-rotate-left"></i>Activity</a>
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/operations" class="mobile-menu-link"><i class="fas fa-heart-pulse"></i>Operations</a>
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/notifications" class="mobile-menu-link"><i class="fas fa-bell"></i>Notifications</a>
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/profile" class="mobile-menu-link"><i class="fas fa-user"></i>Profile</a>
+                    <a href="{{ dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') }}/logout" class="mobile-menu-link text-red-400"><i class="fas fa-right-from-bracket"></i>Log out</a>
+                    {% if dashboard and dashboard.url_prefix == '/admin' %}<a href="/admin/cms/" class="mobile-menu-link"><i class="fas fa-pen-to-square"></i>CMS</a>{% endif %}
+                </nav>
+            </aside>
+        </div>
 
         <!-- Mobile Bottom Nav -->
         {% set base_prefix = dashboard.url_prefix if dashboard else (url_prefix if url_prefix else '/admin') %}
@@ -117,7 +142,7 @@
             </aside>
 
             <!-- Page Content -->
-            <main class="flex-1 p-4 sm:p-6 lg:p-8 pb-20 md:pb-8">
+            <main class="admin-page-content flex-1 p-4 sm:p-6 lg:p-8 pb-20 md:pb-8">
                 {% block content %}{% endblock %}
             </main>
         </div>
@@ -133,6 +158,7 @@
                 darkMode: localStorage.getItem('admin-dark-mode') !== 'false',
                 notifications: [],
                 notificationsOpen: false,
+                mobileMenuOpen: false,
                 init() {
                     this.applyTheme();
                     this.loadNotifications();

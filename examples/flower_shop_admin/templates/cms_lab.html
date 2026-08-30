@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title><link rel="stylesheet" href="/shop-static/shop.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="site-header">
+      <div><a class="brand" href="/">Petal &amp; Stem</a><p class="eyebrow">DEVELOPER PREVIEW</p></div>
+      <nav aria-label="CMS navigation"><a href="/stories">Journal</a><a href="{{ admin_url }}">Admin Login</a></nav>
+    </header>
+    <p class="eyebrow">FLAXON CMS FEATURE LAB</p>
+    <h1>One public page, every CMS workflow.</h1>
+    <p class="lede">This page is rendered with Jinax from the same CMS records editors manage in the Admin CMS panel.</p>
+    <section class="stories" aria-label="CMS feature checks">
+      <article class="story"><div class="story-body"><p class="eyebrow">CONTENT</p><h2>Stories and rich text</h2><p>{{ stories|length }} story record(s) are available. Edit a story, add an image, change its status, and refresh this page.</p><a class="back" href="{{ cms_url }}">Open CMS editor &rarr;</a></div></article>
+      <article class="story"><div class="story-body"><p class="eyebrow">RESOURCES</p><h2>Taxonomy, comments, and menus</h2><p>{{ taxonomy_count }} taxonomy set(s), {{ comment_count }} comment(s), and {{ menu_count }} menu(s) are persisted by this example.</p><p><a class="back" href="{{ cms_url }}">Manage CMS resources &rarr;</a></p></div></article>
+      <article class="story"><div class="story-body"><p class="eyebrow">OPERATIONS</p><h2>Revisions and data exchange</h2><p>Use the CMS editor to create a revision, compare or restore it, then exercise CSV and JSON import/export from the resource tools.</p><p><a class="back" href="{{ cms_url }}">Run workflow checks &rarr;</a></p></div></article>
+    </section>
+  </main>
+</body>
+</html>

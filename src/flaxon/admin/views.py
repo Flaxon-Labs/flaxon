@@ -114,14 +114,6 @@ class CreateView(AdminView):
                 form_data = form_data.to_dict()
             form_data = self.dashboard.validate_csrf(form_data)
 
-            expected_version = form_data.pop("_version", None)
-            if expected_version is not None and hasattr(model_class, "get_instance"):
-                current = model_class.get_instance(self.object_id)
-                current = await current if hasattr(current, "__await__") else current
-                current_version = current.get("updated_at") if isinstance(current, dict) else getattr(current, "updated_at", None)
-                if str(expected_version) != str(current_version):
-                    raise Conflict("This record was changed by another user. Reload before saving.")
-
             # Hook for model saving instance if supported by model manager
             model_class = self.admin_model.model
             result = None
@@ -143,7 +135,7 @@ class CreateView(AdminView):
             "verbose_name": self.admin_model.get_verbose_name(),
             "fields": self.admin_model.fields,
             "readonly_fields": self.admin_model.readonly_fields,
-            "version": (obj.get("updated_at") if isinstance(obj, dict) else getattr(obj, "updated_at", "")) if obj is not None else "",
+            "version": "",
             "user": getattr(self.request, "user", None),
         }
         return await self.dashboard.jinax.render_response("admin/add.html", context)
@@ -162,6 +154,14 @@ class UpdateView(AdminView):
             if hasattr(form_data, "to_dict"):
                 form_data = form_data.to_dict()
             form_data = self.dashboard.validate_csrf(form_data)
+
+            expected_version = form_data.pop("_version", None)
+            if expected_version is not None and hasattr(model_class, "get_instance"):
+                current = model_class.get_instance(self.object_id)
+                current = await current if hasattr(current, "__await__") else current
+                current_version = current.get("updated_at") if isinstance(current, dict) else getattr(current, "updated_at", None)
+                if str(expected_version) != str(current_version):
+                    raise Conflict("This record was changed by another user. Reload before saving.")
 
             if hasattr(model_class, "update_instance"):
                 result = model_class.update_instance(self.object_id, form_data)
@@ -187,6 +187,8 @@ class UpdateView(AdminView):
             "object_id": self.object_id,
             "fields": self.admin_model.fields,
             "readonly_fields": self.admin_model.readonly_fields,
+            "version": (obj.get("updated_at") if isinstance(obj, dict) else getattr(obj, "updated_at", "")) if obj is not None else "",
+            "user": getattr(self.request, "user", None),
         }
         return await self.dashboard.jinax.render_response("admin/edit.html", context)
 

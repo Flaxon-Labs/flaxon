@@ -113,11 +113,9 @@
                 x-model="listQuery['filter_' + filterField]" @change="fetchList()"
                 class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-sm focus:outline-none focus:border-indigo-500"
               >
-                <option value="">All <span x-text="filterField"></span></option>
-                <template x-if="filterField === 'status'">
-                  <template x-for="opt in (currentType.statuses || ['draft','published'])" :key="opt">
-                    <option :value="opt" x-text="opt"></option>
-                  </template>
+                <option value="" x-text="'All ' + filterField.replace('_', ' ')"></option>
+                <template x-for="opt in (currentType.filter_options?.[filterField] || (filterField === 'status' ? (currentType.statuses || ['draft','published']) : []))" :key="opt">
+                  <option :value="opt" x-text="opt"></option>
                 </template>
               </select>
             </template>

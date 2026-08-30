@@ -209,10 +209,9 @@ class AdminAuth:
         return token
 
     def reset_password(self, token: str, password: str) -> bool:
-        entry = self._reset_tokens.pop(token, None)
+        entry = self._reset_tokens.get(token)
         if isinstance(entry, (tuple, list)):
             entry = {"username": entry[0], "expires_at": entry[1]}
-        self._persist_auth_tokens()
         if entry is None or entry.get("expires_at", 0) < time.time() or not password:
             return False
         record = self.users.get(entry["username"])
@@ -221,6 +220,8 @@ class AdminAuth:
         if self.password_validator.validate(password):
             return False
         record["password_hash"] = self.hasher.hash(password)
+        self._reset_tokens.pop(token, None)
+        self._persist_auth_tokens()
         return True
 
     def request_email_verification(self, username: str, expires_in: int = 86400) -> str | None:
@@ -306,6 +307,98 @@ class AdminStore:
         with self._connect() as db:
             result = db.execute("DELETE FROM flaxon_admin_operations WHERE created_at < ?", (before,))
             return result.rowcount
+
+
+class PostgreSQLAdminStore:
+    """PostgreSQL implementation of the synchronous AdminStore contract.
+
+    The Admin production services are intentionally synchronous, so this
+    adapter uses short-lived psycopg connections while the request-facing
+    application database remains async. Projects with a connection-pool
+    requirement can provide their own AdminStore implementation.
+    """
+
+    def __init__(self, dsn: str) -> None:
+        self.dsn = dsn
+        try:
+            import psycopg
+        except ImportError as exc:  # pragma: no cover - optional dependency
+            raise RuntimeError("PostgreSQLAdminStore requires psycopg.") from exc
+        self._psycopg = psycopg
+        self._db = self._psycopg.connect(self.dsn, autocommit=True)
+        with self._db.cursor() as db:
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS flaxon_admin_store "
+                "(namespace VARCHAR(255) NOT NULL, key VARCHAR(255) NOT NULL, "
+                "value TEXT NOT NULL, PRIMARY KEY(namespace, key))"
+            )
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS flaxon_admin_operations "
+                "(id VARCHAR(64) PRIMARY KEY, kind VARCHAR(128) NOT NULL, "
+                "payload TEXT NOT NULL, created_at DOUBLE PRECISION NOT NULL)"
+            )
+
+    def _connect(self) -> Any:
+        return self._db
+
+    def close(self) -> None:
+        if not self._db.closed:
+            self._db.close()
+
+    def get(self, namespace: str, key: str, default: Any = None) -> Any:
+        db = self._connect()
+        row = db.execute(
+                "SELECT value FROM flaxon_admin_store WHERE namespace=%s AND key=%s",
+                (namespace, key),
+            ).fetchone()
+        return json.loads(row[0]) if row else default
+
+    def set(self, namespace: str, key: str, value: Any) -> None:
+        db = self._connect()
+        db.execute(
+                "INSERT INTO flaxon_admin_store(namespace, key, value) VALUES(%s, %s, %s) "
+                "ON CONFLICT(namespace, key) DO UPDATE SET value=excluded.value",
+                (namespace, key, json.dumps(value, default=str)),
+            )
+
+    def delete(self, namespace: str, key: str) -> None:
+        db = self._connect()
+        db.execute(
+                "DELETE FROM flaxon_admin_store WHERE namespace=%s AND key=%s",
+                (namespace, key),
+            )
+
+    def list(self, namespace: str) -> dict[str, Any]:
+        db = self._connect()
+        rows = db.execute(
+                "SELECT key, value FROM flaxon_admin_store WHERE namespace=%s",
+                (namespace,),
+            ).fetchall()
+        return {key: json.loads(value) for key, value in rows}
+
+    def record_operation(self, kind: str, payload: dict[str, Any], operation_id: str | None = None) -> str:
+        operation_id = operation_id or secrets.token_hex(8)
+        db = self._connect()
+        db.execute(
+                "INSERT INTO flaxon_admin_operations(id, kind, payload, created_at) VALUES(%s, %s, %s, %s) "
+                "ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, payload=excluded.payload, created_at=excluded.created_at",
+                (operation_id, kind, json.dumps(payload, default=str), time.time()),
+            )
+        return operation_id
+
+    def list_operations(self, limit: int = 100) -> list[dict[str, Any]]:
+        db = self._connect()
+        rows = db.execute(
+                "SELECT id, kind, payload, created_at FROM flaxon_admin_operations "
+                "ORDER BY created_at DESC LIMIT %s",
+                (max(1, min(limit, 5000)),),
+            ).fetchall()
+        return [{"id": row[0], "kind": row[1], "timestamp": row[3], **(json.loads(row[2]) or {})} for row in rows]
+
+    def prune_operations(self, before: float) -> int:
+        db = self._connect()
+        result = db.execute("DELETE FROM flaxon_admin_operations WHERE created_at < %s", (before,))
+        return result.rowcount
 
 
 class AdminStoreSessionBackend:

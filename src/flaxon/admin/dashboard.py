@@ -344,8 +344,12 @@ class AdminDashboard:
         if action is None:
             raise NotFound(f"Unknown action '{action_name}'.")
         form = await request.form()
-        self.validate_csrf(form.to_dict())
-        ids = form.get_list("ids") if hasattr(form, "get_list") else []
+        self.validate_csrf(form.to_dict() if hasattr(form, "to_dict") else form)
+        if hasattr(form, "get_list"):
+            ids = form.get_list("ids")
+        else:
+            selected = form.get("ids", [])
+            ids = selected if isinstance(selected, list) else ([selected] if selected else [])
         result = action(ids) if callable(action) else None
         if hasattr(result, "__await__"):
             await result
@@ -389,6 +393,14 @@ class AdminDashboard:
                 self.notifications = value or []
             elif row["namespace"] == "operations" and row["key"] == "records":
                 self.operations = value or []
+            elif row["namespace"] == "auth" and row["key"] == "reset_tokens":
+                self.auth._reset_tokens = value or {}
+            elif row["namespace"] == "auth" and row["key"] == "verification_tokens":
+                self.auth._verification_tokens = value or {}
+            elif row["namespace"] == "media" and row["key"] == "metadata":
+                self.media_metadata = value or {}
+            elif row["namespace"] == "media" and row["key"] == "folders":
+                self.media_folders = value or []
         self._database_loaded = True
 
     async def _persist_database(self) -> None:
@@ -412,6 +424,12 @@ class AdminDashboard:
             "notifications": self.notifications[-1000:],
             "config": self.config.to_dict(),
             "roles": self.roles,
+        }, "auth": {
+            "reset_tokens": self.auth._reset_tokens,
+            "verification_tokens": self.auth._verification_tokens,
+        }, "media": {
+            "metadata": self.media_metadata,
+            "folders": self.media_folders,
         }}
         for namespace, entries in values.items():
             for key, value in entries.items():
@@ -472,7 +490,7 @@ class AdminDashboard:
         if request.method == "GET":
             return await self.jinax.render_response("admin/login.html", {"title": self.config.site_title, "error": None, "csrf_token": self.csrf_token(), "reset_url": f"{self.url_prefix}/password-reset"})
         form = await request.form()
-        data = self.validate_csrf(form.to_dict())
+        data = self.validate_csrf(form.to_dict() if hasattr(form, "to_dict") else form)
         username = str(data.get("username", ""))
         if self.require_email_verification and self.auth.users.get(username, {}).get("email") and not self.auth.users.get(username, {}).get("email_verified"):
             token = None
@@ -493,13 +511,19 @@ class AdminDashboard:
         return response
 
     async def password_reset(self, request: Request) -> Response:
-        context = {"title": self.config.site_title, "csrf_token": self.csrf_token(), "message": None, "error": None, "reset_url": f"{self.url_prefix}/password-reset", "login_url": f"{self.url_prefix}/login"}
+        context = {"title": self.config.site_title, "csrf_token": self.csrf_token(), "message": None, "error": None, "reset_token": request.query.get("token", ""), "reset_url": f"{self.url_prefix}/password-reset", "login_url": f"{self.url_prefix}/login"}
         if request.method == "POST":
-            data = self.validate_csrf((await request.form()).to_dict())
+            form = await request.form()
+            data = self.validate_csrf(form.to_dict() if hasattr(form, "to_dict") else form)
             token = str(data.get("token", "")).strip()
             if token:
                 if not self.auth.reset_password(token, str(data.get("password", ""))):
-                    context["error"] = "This reset link is invalid or expired."
+                    context["error"] = (
+                        "The new password does not meet the password requirements."
+                        if token in self.auth._reset_tokens
+                        else "This reset link is invalid or expired."
+                    )
+                    context["reset_token"] = token
                 else:
                     await self._persist_database()
                     context["message"] = "Password reset. You can sign in now."
@@ -517,7 +541,8 @@ class AdminDashboard:
     async def verify_email(self, request: Request) -> Response:
         context = {"title": self.config.site_title, "csrf_token": self.csrf_token(), "message": None, "error": None, "login_url": f"{self.url_prefix}/login"}
         if request.method == "POST":
-            data = self.validate_csrf((await request.form()).to_dict())
+            form = await request.form()
+            data = self.validate_csrf(form.to_dict() if hasattr(form, "to_dict") else form)
             if self.auth.verify_email(str(data.get("token", ""))):
                 await self._persist_database()
                 context["message"] = "Email address verified."
@@ -537,7 +562,8 @@ class AdminDashboard:
         mfa_uri = None
         recovery_codes: list[str] = []
         if request.method == "POST":
-            form = self.validate_csrf((await request.form()).to_dict())
+            raw_form = await request.form()
+            form = self.validate_csrf(raw_form.to_dict() if hasattr(raw_form, "to_dict") else raw_form)
             record = self.auth.users.get(user.username)
             if record is not None:
                 record["email"] = str(form.get("email", record.get("email", "")))
@@ -684,8 +710,9 @@ class AdminDashboard:
         message = None
         if request.method == "POST":
             form = await request.form()
-            self.validate_csrf(form.to_dict())
-            upload = next((v for v in form.get_all().values() if hasattr(v, "filename")), None)
+            self.validate_csrf(form.to_dict() if hasattr(form, "to_dict") else form)
+            values = form.get_all().values() if hasattr(form, "get_all") else form.values()
+            upload = next((v for v in values if hasattr(v, "filename")), None)
             if upload is not None:
                 if getattr(upload, "size", 0) > self.max_upload_size:
                     raise BadRequest("Uploaded file exceeds the configured size limit.")
@@ -792,6 +819,7 @@ class AdminDashboard:
         self.media_metadata[filename] = {"original_name": filename, "size": len(content), "content_type": content_type, "sha256": hashlib.sha256(content).hexdigest()}
         if self.store:
             self.store.set("media", "metadata", self.media_metadata)
+        await self._persist_database()
         return JSONResponse({"filename": filename, "url": url, "sha256": self.media_metadata[filename]["sha256"]}, status_code=201)
 
     def _schedule_thumbnail(self, relative: str, image_bytes: bytes | None) -> None:
@@ -820,6 +848,7 @@ class AdminDashboard:
             self.media_metadata.setdefault(relative, {})["thumbnail_status"] = "ready"
             if self.store:
                 self.store.set("media", "metadata", self.media_metadata)
+            await self._persist_database()
         except Exception as exc:  # Thumbnail failures are recorded for the Admin operations view.
             self.media_metadata.setdefault(relative, {})["thumbnail_status"] = "failed"
 
@@ -850,19 +879,43 @@ class AdminDashboard:
         return data
 
     async def _media_files(self) -> list[dict[str, Any]]:
+        async def display_metadata(relative: str) -> dict[str, Any]:
+            metadata = dict(self.media_metadata.get(relative, {}) or {})
+            thumbnail_url = metadata.get("thumbnail_url")
+            if not thumbnail_url:
+                return metadata
+
+            # Metadata can outlive a thumbnail (for example after a rename or
+            # interrupted background job). Normalize Windows paths and fall
+            # back to the original asset when the thumbnail is unavailable.
+            thumbnail_url = str(thumbnail_url).replace("\\", "/")
+            metadata["thumbnail_url"] = thumbnail_url
+            thumbnail_relative = thumbnail_url.split("?", 1)[0].lstrip("/")
+            if thumbnail_relative.startswith(self.media.url_prefix.lstrip("/") + "/"):
+                thumbnail_relative = thumbnail_relative[len(self.media.url_prefix.lstrip("/")) + 1:]
+            if self.media_storage is not None:
+                available = await self.media_storage.exists(thumbnail_relative)
+            else:
+                available = self.media.exists(thumbnail_relative)
+            if not available:
+                metadata.pop("thumbnail_url", None)
+            return metadata
+
         if self.media_storage is not None:
             files = []
             for relative in await self.media_storage.list(""):
                 if not relative or relative.startswith("thumbnails/"):
                     continue
                 size = await self.media_storage.size(relative)
-                files.append({"name": Path(relative).name, "size": size, "relative_name": relative, "url": self.media_storage.get_url(relative), "metadata": self.media_metadata.get(relative, {})})
+                files.append({"name": Path(relative).name, "size": size, "relative_name": relative, "url": self.media_storage.get_url(relative), "metadata": await display_metadata(relative)})
             return files
         files = []
         for path in self.media.base_path.rglob("*"):
             if path.is_file():
                 relative = str(path.relative_to(self.media.base_path)).replace(os.sep, "/")
-                files.append(self.media.get_file_info(str(path)) | {"relative_name": relative, "url": self.media.get_url(str(path)), "metadata": self.media_metadata.get(relative, {})})
+                if relative.startswith("thumbnails/"):
+                    continue
+                files.append(self.media.get_file_info(str(path)) | {"relative_name": relative, "url": self.media.get_url(str(path)), "metadata": await display_metadata(relative)})
         return files
 
     async def media_folders_api(self, request: Request) -> Response:
@@ -877,8 +930,9 @@ class AdminDashboard:
             self.media._safe_path(folder).mkdir(parents=True, exist_ok=True)
             if folder not in self.media_folders:
                 self.media_folders.append(folder)
-                if self.store:
-                    self.store.set("media", "folders", self.media_folders)
+            if self.store:
+                self.store.set("media", "folders", self.media_folders)
+            await self._persist_database()
         return JSONResponse({"folders": self.media_folders})
 
     async def media_api(self, request: Request, filename: str) -> Response:
@@ -898,6 +952,7 @@ class AdminDashboard:
             self.media_metadata.pop(filename, None)
             if self.store:
                 self.store.set("media", "metadata", self.media_metadata)
+            await self._persist_database()
             return JSONResponse({"deleted": True})
         data = await request.json() or {}
         new_name = "/".join(Sanitizer.sanitize_filename(part) for part in str(data.get("name", filename)).split("/") if part not in {"", "."})
@@ -913,6 +968,7 @@ class AdminDashboard:
         self.media_metadata[new_name] = metadata
         if self.store:
             self.store.set("media", "metadata", self.media_metadata)
+        await self._persist_database()
         url = self.media_storage.get_url(new_name) if self.media_storage is not None else self.media.get_url(target)
         return JSONResponse({"name": new_name, "url": url, "metadata": metadata})
 

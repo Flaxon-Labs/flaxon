@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title><link rel="stylesheet" href="/shop-static/shop.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="site-header">
+      <div><a class="brand" href="/">Petal &amp; Stem</a><p class="eyebrow">THE JOURNAL</p></div>
+      <nav aria-label="Site navigation"><a href="/catalog">Shop</a><a href="{{ admin_url }}">Admin Login</a></nav>
+    </header>
+    <p class="eyebrow">PUBLISHED WITH FLAXON CMS</p>
+    <h1>Notes from the flower studio.</h1>
+    <p class="lede">A public CMS front end built with Jinax. Editors manage these stories at <a class="back" href="{{ cms_url }}">Admin &rarr; CMS</a>.</p>
+    <section class="stories" aria-label="Published stories">
+      {% for story in stories %}
+      <article class="story">
+        {% if story.get('hero_image') %}<img src="{{ story.get('hero_image') }}" alt="{{ story.get('title', 'Story image') }}">{% endif %}
+        <div class="story-body"><p class="eyebrow">{{ story.get('published_on', 'STUDIO NOTES') }}</p><h2>{{ story.get('title', 'Untitled story') }}</h2><div class="story-copy">{{ story.get('body', '')|safe }}</div></div>
+      </article>
+      {% else %}<p class="status">No published stories yet. Create and publish one in the CMS.</p>{% endfor %}
+    </section>
+  </main>
+</body>
+</html>

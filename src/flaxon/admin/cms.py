@@ -561,6 +561,10 @@ class CMS:
         types = []
         for content_type in self.content_types.values():
             schema = content_type.schema()
+            schema["filter_options"] = {
+                field: sorted({str(item.get(field, "")) for item in content_type.items.values() if item.get(field, "") != ""})[:100]
+                for field in content_type.list_filter
+            }
             capabilities = {}
             for action in ("read", "create", "update", "delete"):
                 try:
@@ -890,4 +894,7 @@ class CMS:
 
     async def _body_data(self, request: Request) -> Any:
         content_type = request.headers.get("content-type", "")
-        return (await request.form()).to_dict() if "multipart/form-data" in content_type else await request.json()
+        if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+            form = await request.form()
+            return form.to_dict() if hasattr(form, "to_dict") else dict(form)
+        return await request.json()

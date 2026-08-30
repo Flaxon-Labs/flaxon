@@ -93,7 +93,7 @@ class FileStorage:
 
     def get_url(self, file_path: str) -> str:
         relative = Path(file_path).relative_to(self.base_path)
-        return f"{self.url_prefix}/{relative}"
+        return f"{self.url_prefix}/{relative.as_posix()}"
 
     def list_files(self, directory: str = "") -> list[str]:
         path = self._safe_path(directory)

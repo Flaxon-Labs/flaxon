@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title><link rel="stylesheet" href="/shop-static/shop.css">
+</head>
+<body>
+  <main class="shell">
+    <a class="back" href="/">&larr; Petal &amp; Stem</a>
+    <p class="eyebrow">PUBLIC CUSTOM PAGE / JINAX</p>
+    <h1>Fresh from the studio.</h1>
+    <p class="lede">This page reads flower records and media URLs managed through Flaxon Admin.</p>
+    <section class="catalog" aria-label="Flower catalog">
+      {% for flower in flowers %}
+      <article class="product">
+        {% if flower.get('image') %}<img src="{{ flower.get('image') }}" alt="{{ flower.get('name', 'Flower') }}">{% else %}<div class="media-preview" aria-hidden="true"></div>{% endif %}
+        <div class="product-body"><h2>{{ flower.get('name', 'Flower') }}</h2><p>{{ flower.get('category', 'Arrangement') }} &middot; ${{ flower.get('price', 0) }}</p><p>{{ flower.get('stock', 0) }} available</p><button class="add-to-cart" data-id="{{ flower.get('id') }}" data-name="{{ flower.get('name', 'Flower') }}" data-price="{{ flower.get('price', 0) }}">Add to cart</button></div>
+      </article>
+      {% else %}<p class="status">No flowers have been added yet.</p>{% endfor %}
+    </section>
+    <aside class="cart-panel" aria-label="Shopping cart"><div><h2>Your cart</h2><span id="cart-count">0 items</span></div><div id="cart-items"><p class="status">Your cart is empty.</p></div><div class="cart-total"><strong>Total</strong><strong id="cart-total">$0.00</strong></div><button id="checkout" disabled>Checkout</button><p id="order-status" class="status" role="status"></p></aside>
+    <section class="media-library">
+      <h2>Admin media available to the website</h2>
+      <p class="status">Upload an image in Admin &rarr; Media, then copy its URL into a flower's <code>image</code> field.</p>
+      {% for file in media %}<p><a href="{{ file.url }}">{{ file.relative_name }}</a></p>{% else %}<p class="status">No media uploaded yet.</p>{% endfor %}
+    </section>
+  </main>
+</body>
+<script>
+const cartKey = 'petal-stem-cart';
+let cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+const money = value => `$${Number(value).toFixed(2)}`;
+function renderCart() {
+  const items = document.getElementById('cart-items');
+  const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  document.getElementById('cart-count').textContent = `${count} item${count === 1 ? '' : 's'}`;
+  document.getElementById('cart-total').textContent = money(total);
+  document.getElementById('checkout').disabled = !cart.length;
+  items.innerHTML = cart.length ? cart.map(item => `<div class="cart-item"><span>${item.name}</span><span>${item.quantity} x ${money(item.price)} <button class="remove-item" data-id="${item.id}" aria-label="Remove ${item.name}">Remove</button></span></div>`).join('') : '<p class="status">Your cart is empty.</p>';
+  localStorage.setItem(cartKey, JSON.stringify(cart));
+  items.querySelectorAll('.remove-item').forEach(button => button.onclick = () => { cart = cart.filter(item => item.id !== button.dataset.id); renderCart(); });
+}
+document.querySelectorAll('.add-to-cart').forEach(button => button.onclick = () => {
+  const existing = cart.find(item => item.id === button.dataset.id);
+  if (existing) existing.quantity += 1;
+  else cart.push({id: button.dataset.id, name: button.dataset.name, price: Number(button.dataset.price), quantity: 1});
+  renderCart();
+});
+document.getElementById('checkout').onclick = async () => {
+  const response = await fetch('/api/orders', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({items: cart.map(({id, quantity}) => ({id, quantity}))})});
+  const result = await response.json();
+  document.getElementById('order-status').textContent = result.order ? `Order ${result.order.id} placed for ${money(result.order.total)}.` : result.error;
+  if (result.order) { cart = []; renderCart(); }
+};
+renderCart();
+</script>
+</html>

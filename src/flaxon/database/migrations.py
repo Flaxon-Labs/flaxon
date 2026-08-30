@@ -131,7 +131,7 @@ class MigrationRunner:
                 f"INSERT INTO {self.table_name} (version, name, applied_at, down) VALUES ($1, $2, $3, $4)",
                 migration.version,
                 migration.name,
-                datetime.now().isoformat(),
+                datetime.now(),
                 migration.down or "",
             )
 
