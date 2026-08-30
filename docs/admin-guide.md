@@ -2285,12 +2285,3 @@ WebAuthn requires an injected provider backed by a maintained WebAuthn library;
 Flaxon stores credential metadata and delegates challenge creation and
 assertion verification to that provider. It never accepts an unverified client
 assertion directly.
-
-## UI and Three.js Reliability
-
-The Three.js background is decorative only. The Admin remains functional when
-the CDN is blocked, WebGL is unavailable, the browser requests reduced motion,
-or the tab is hidden. The renderer pauses in hidden tabs, handles context loss,
-caps pixel ratio, and disposes resources on page exit. Custom themes and Admin
-pages must keep the same rule: visual effects cannot be a dependency for
-authentication, notifications, or form submission.

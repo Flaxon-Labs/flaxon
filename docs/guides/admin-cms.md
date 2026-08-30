@@ -350,10 +350,6 @@ CSV/JSON import/export endpoints, notification preferences, audit-chain
 verification, and provider-backed WebAuthn endpoints. See the [Admin API
 Reference](../api/admin.md) for paths and CSRF requirements.
 
-The bundled Three.js background is optional decoration. It is disabled for
-reduced-motion/data-saving clients and safely skipped when the CDN or WebGL is
-unavailable; it must never be used as an application-health signal.
-
 Do not claim that WebAuthn or antivirus scanning is enabled merely because the
 Flaxon adapters are present. Inject a maintained WebAuthn provider and a real
 scanner service, then test their ceremonies and failure behavior in staging.

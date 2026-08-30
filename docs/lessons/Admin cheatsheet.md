@@ -291,6 +291,4 @@ browser or trust client-provided credential IDs without provider validation.
 - Include `_csrf` in browser forms and `X-CSRF-Token` in SPA mutations.
 - Enforce `<model>:create`, `<model>:read`, `<model>:update`, and
   `<model>:delete` permissions server-side.
-- Treat Three.js as optional decoration; authentication and notifications must
-  work if its CDN request or WebGL initialization fails.
 - Run `flaxon migrate` before starting workers and web processes.
