@@ -167,6 +167,7 @@ nav:
       - Authentication: guides/authentication.md
       - Authorization: guides/authorization.md
       - Admin and CMS: guides/admin-cms.md
+      - Admin Production Guide: guides/admin-production.md
       - Admin Model Reference: guides/admin.md
       - Testing: guides/testing.md
       - Debugging: guides/debugging.md
