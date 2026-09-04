@@ -10,7 +10,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ### Report a Bug
 
-1. Check if the bug is already reported in [Issues](https://github.com/flaxon/flaxon/issues)
+1. Check if the bug is already reported in [Issues](https://github.com/aldanedev-create/Flaxon-Backend-Framework/issues)
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce
@@ -30,7 +30,8 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
 3. Make your changes with tests
-4. Run the test suite: `pytest`
+4. **Run the full test suite** (see below) and confirm it passes -- a partial
+   or single-file test run is not sufficient before opening a PR
 5. Run linting: `ruff check .`
 6. Run type checking: `mypy .`
 7. Commit with clear messages
@@ -40,8 +41,8 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ```bash
 # Clone the repository
-git clone https://github.com/flaxon/flaxon.git
-cd flaxon
+git clone https://github.com/aldanedev-create/Flaxon-Backend-Framework.git
+cd Flaxon-Backend-Framework
 
 # Create a virtual environment
 python -m venv .venv
@@ -50,90 +51,113 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # Install in development mode with all extras
 pip install -e ".[standard,dev]"
 
-# Run tests
+# Install browser test dependencies (see "Running the full test suite" below)
+pip install playwright pytest-playwright
+python -m playwright install chromium
+```
+
+## Running the Full Test Suite
+
+Before opening a pull request, contributors must run the **full** test suite,
+not just the tests touching their own change -- a change that looks isolated
+can still break something elsewhere (route matching, admin/CMS wiring, and
+the CLI have all had regressions from changes that looked unrelated).
+
+The project's `pytest.ini` already configures coverage reporting, strict
+markers, and test discovery across the whole `tests/` directory, so running
+the suite is just:
+
+```bash
 pytest
+```
 
-# Run tests with coverage
-pytest --cov=flaxon --cov-report=term-missing
+This includes `tests/browser/`, which drives a real Chromium browser via
+Playwright -- make sure you've run `python -m playwright install chromium`
+first (see Development Setup above), or those tests will fail rather than
+being skipped.
 
-# Run linting
-ruff check .
+Useful variations while iterating locally:
 
-# Run type checking
-mypy .
+```bash
+# Fast pass while developing, without coverage overhead
+pytest --no-cov
 
-Code Style
-Follow PEP 8
+# A single test file or directory
+pytest tests/integration/test_router_specificity.py -v --no-cov
 
-Use type hints for all function signatures
+# Skip browser tests if you don't have a display/Chromium available locally
+pytest --ignore=tests/browser
+```
 
-Write docstrings for public APIs
+None of the shortcuts above are a substitute for a full `pytest` run before
+submitting a PR -- CI (and reviewers) will run the complete suite regardless.
 
-Keep functions focused and small
+## Code Style
 
-Prefer async/await for I/O operations
+- Follow PEP 8
+- Use type hints for all function signatures
+- Write docstrings for public APIs
+- Keep functions focused and small
+- Prefer async/await for I/O operations
 
-Linting Configuration
-Flaxon uses ruff for linting and formatting. Configuration is in ruff.toml.
+## Linting Configuration
 
-Type Checking
-Flaxon uses mypy for static type checking. Configuration is in mypy.ini.
+Flaxon uses `ruff` for linting and formatting. Configuration is in `ruff.toml`.
 
-Testing
-Unit tests in tests/unit/ — Test individual components
+## Type Checking
 
-Integration tests in tests/integration/ — Test component interactions
+Flaxon uses `mypy` for static type checking. Configuration is in `mypy.ini`.
 
-Security tests in tests/security/ — Test security properties
+## Test Organization
 
-Performance tests in tests/performance/ — Benchmark performance
+- Unit tests in `tests/unit/` -- test individual components
+- Integration tests in `tests/integration/` -- test component interactions
+- Security tests in `tests/security/` -- test security properties
+- Performance tests in `tests/performance/` -- benchmark performance
+- Browser tests in `tests/browser/` -- real end-to-end tests via Playwright
 
-Writing Tests
-python
+## Writing Tests
+
+```python
 # tests/unit/test_example.py
 from flaxon import Flaxon
-from flaxon.testing import TestClient
+from flaxon.testing.client import AsyncTestClient
 
-def test_route():
+async def test_route():
     app = Flaxon("test")
 
     @app.get("/")
     async def home():
         return {"message": "hello"}
 
-    response = TestClient(app).get("/")
+    response = await AsyncTestClient(app).request("GET", "/")
     assert response.status_code == 200
-    assert response.json() == {"message": "hello"}
-Pull Request Process
-Update the CHANGELOG.md with your changes
+```
 
-Update documentation if necessary
+## Pull Request Process
 
-Ensure all tests pass
+1. Update `CHANGELOG.md` with your changes
+2. Update documentation if necessary
+3. Ensure the full test suite passes (`pytest`, not a partial run)
+4. Get at least one maintainer review
+5. Squash commits before merging
 
-Get at least one maintainer review
+## Release Process
 
-Squash commits before merging
+1. Update version in `src/flaxon/version.py`
+2. Update `CHANGELOG.md`
+3. Tag the release: `git tag v0.2.4`
+4. Push tags: `git push --tags`
+5. GitHub Actions will build and publish to PyPI
 
-Release Process
-Update version in src/flaxon/__init__.py
+## Maintainers
 
-Update CHANGELOG.md
-
-Tag the release: git tag v0.1.0
-
-Push tags: git push --tags
-
-GitHub Actions will build and publish to PyPI
-
-Maintainers
 Aldane Hutchinson (@aldane)
 
-Questions?
-Open an issue for bugs or feature requests
+## Questions?
 
-Join our Discord for community support
-
-Email: maintainers@flaxon.dev
+- Open an issue for bugs or feature requests
+- Join our Discord for community support
+- Email: maintainers@flaxon.dev
 
 Thank you for contributing to Flaxon! 🚀
