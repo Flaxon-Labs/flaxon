@@ -3,9 +3,13 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from flaxon.logging import get_logger
+
 from .event import Event
 from .listener import Listener
 from .registry import EventRegistry
+
+logger = get_logger(__name__)
 
 
 class EventDispatcher:
@@ -22,9 +26,10 @@ class EventDispatcher:
             try:
                 result = listener.handle(event)
                 if asyncio.iscoroutine(result):
-                    asyncio.create_task(result)
+                    task = asyncio.create_task(result)
+                    task.add_done_callback(self._log_task_exception(event.name))
             except Exception:
-                pass
+                logger.exception(f"Error in listener for event '{event.name}'")
 
     async def dispatch_async(self, event: Event | str, data: Any = None) -> None:
         if isinstance(event, str):
@@ -40,10 +45,15 @@ class EventDispatcher:
                 else:
                     tasks.append(asyncio.create_task(self._run_sync(listener, event)))
             except Exception:
-                pass
+                logger.exception(f"Error scheduling listener for event '{event.name}'")
 
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(
+                        f"Error in listener for event '{event.name}'", exc_info=result
+                    )
 
     async def _run_sync(self, listener: Listener, event: Event) -> None:
         loop = asyncio.get_running_loop()
@@ -59,7 +69,7 @@ class EventDispatcher:
             try:
                 listener.handle(event)
             except Exception:
-                pass
+                logger.exception(f"Error in listener for event '{event.name}'")
 
     async def dispatch_with_response(self, event: Event | str, data: Any = None) -> list[Any]:
         if isinstance(event, str):
@@ -75,9 +85,19 @@ class EventDispatcher:
                     result = await result
                 results.append(result)
             except Exception:
-                pass
+                logger.exception(f"Error in listener for event '{event.name}'")
 
         return results
+
+    @staticmethod
+    def _log_task_exception(event_name: str):
+        def callback(task: asyncio.Task) -> None:
+            if task.cancelled():
+                return
+            exc = task.exception()
+            if exc is not None:
+                logger.error(f"Error in async listener for event '{event_name}'", exc_info=exc)
+        return callback
 
     def has_listeners(self, event_name: str) -> bool:
         return len(self.registry.get_listeners(event_name)) > 0
